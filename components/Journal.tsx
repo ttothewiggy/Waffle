@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ImagePlus,
+  Mic,
   Feather,
   X,
   Check,
@@ -20,6 +21,8 @@ import {
   type Entry,
   type Photo,
 } from "@/lib/storage/types";
+import BackupDialog from "./BackupDialog";
+import DictationDialog from "./DictationDialog";
 const parseDay = (key: string) => new Date(`${key}T12:00:00`);
 const format = (key: string, options: Intl.DateTimeFormatOptions) =>
   parseDay(key).toLocaleDateString(undefined, options);
@@ -57,6 +60,8 @@ export default function Journal() {
   const [adding, setAdding] = useState(false);
   const [offline, setOffline] = useState(false);
   const [info, setInfo] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [dictationDay, setDictationDay] = useState<string | null>(null);
   const entriesRef = useRef<Record<string, Entry>>({});
   const pending = useRef(new Map<string, Entry>());
   const serial = useRef(Promise.resolve());
@@ -116,7 +121,7 @@ export default function Journal() {
           await journalRepository.save(entry);
           if (pending.current.get(entry.date) === entry)
             pending.current.delete(entry.date);
-          if (seq === sequence.current) {
+          if (seq === sequence.current && pending.current.size === 0) {
             setStatus("Saved on this device");
             setError("");
           }
@@ -127,6 +132,13 @@ export default function Journal() {
           setStatus("Not saved");
         }
       });
+  }
+  async function flush() {
+    await serial.current;
+    if (pending.current.size)
+      throw new Error(
+        "Some changes have not saved. Close this window and retry saving before continuing.",
+      );
   }
   function update(patch: Partial<Entry>, date = selected) {
     const entry = {
@@ -198,6 +210,26 @@ export default function Journal() {
   ).getDate();
   return (
     <div className="app-shell">
+      {backupOpen && (
+        <BackupDialog
+          close={() => setBackupOpen(false)}
+          flush={flush}
+          reload={load}
+        />
+      )}
+      {dictationDay && (
+        <DictationDialog
+          date={dictationDay}
+          close={() => setDictationDay(null)}
+          append={(text) => {
+            const previous = entriesRef.current[dictationDay]?.text || "";
+            update(
+              { text: previous ? previous + "\n\n" + text : text },
+              dictationDay,
+            );
+          }}
+        />
+      )}
       <aside className="sidebar">
         <a className="brand" href="/" aria-label="Waffle home">
           <span className="brand-icon">
@@ -259,13 +291,23 @@ export default function Journal() {
             <p>
               Entries and photos are stored in this browser, on this device.
               They aren’t encrypted or synced. Clearing browser data removes
-              them. Use this early version for memories you also keep elsewhere.
+              them. Download a backup to keep another copy. Only recordings you
+              choose to transcribe are sent to OpenAI.
             </p>
             <p>
               On Android, open the published link in Chrome and choose “Add to
               Home screen” or “Install app” when offered.
             </p>
-            <button onClick={() => setInfo(false)}>Got it</button>
+            <div className="dialog-actions">
+              <button
+                className="secondary"
+                disabled={!ready || adding}
+                onClick={() => setBackupOpen(true)}
+              >
+                Backup & restore
+              </button>
+              <button onClick={() => setInfo(false)}>Got it</button>
+            </div>
           </section>
         )}
         {error && (
@@ -346,7 +388,7 @@ export default function Journal() {
               </label>
               <textarea
                 id="entry"
-                placeholder="What would you like to remember about today?"
+                placeholder="What would you like to waffle about today?"
                 value={entry.text}
                 onChange={(e) => update({ text: e.target.value })}
                 spellCheck
@@ -365,14 +407,24 @@ export default function Journal() {
                 ))}
               </div>
               <div className="paper-footer">
-                <button
-                  className="attach-button"
-                  disabled={adding}
-                  onClick={() => fileInput.current?.click()}
-                >
-                  <ImagePlus size={19} />
-                  {adding ? "Opening photos…" : "Add photos"}
-                </button>
+                <div className="editor-tools">
+                  <button
+                    className="attach-button"
+                    disabled={adding}
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <ImagePlus size={19} />
+                    {adding ? "Opening photos…" : "Add photos"}
+                  </button>
+                  <button
+                    className="attach-button"
+                    disabled={adding}
+                    onClick={() => setDictationDay(selected)}
+                  >
+                    <Mic size={18} />
+                    Dictate
+                  </button>
+                </div>
                 <span>
                   {words} {words === 1 ? "word" : "words"}
                   <span className="footer-dot">·</span>

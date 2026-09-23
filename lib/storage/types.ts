@@ -15,6 +15,10 @@ export interface Entry {
 export interface JournalRepository {
   list(): Promise<Entry[]>;
   save(entry: Entry): Promise<void>;
+  restore(
+    entries: Entry[],
+    replace: boolean,
+  ): Promise<{ imported: number; skipped: number }>;
 }
 export function dayKey(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;

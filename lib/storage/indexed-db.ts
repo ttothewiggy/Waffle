@@ -1,4 +1,4 @@
-import { Entry, JournalRepository } from "./types";
+import { Entry, JournalRepository, hasContent } from "./types";
 export class IndexedDBRepository implements JournalRepository {
   // Keep the original database ID so renaming the app preserves existing entries.
   constructor(private name = "daybook-v1") {}
@@ -26,6 +26,47 @@ export class IndexedDBRepository implements JournalRepository {
         db.close();
         reject(tx.error);
       };
+    });
+  }
+  async restore(
+    entries: Entry[],
+    replace: boolean,
+  ): Promise<{ imported: number; skipped: number }> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("entries", "readwrite");
+      const store = tx.objectStore("entries");
+      let imported = 0,
+        skipped = 0;
+      tx.oncomplete = () => {
+        db.close();
+        resolve({ imported, skipped });
+      };
+      tx.onabort = () => {
+        db.close();
+        reject(
+          tx.error || new Error("Restore failed; no entries were changed."),
+        );
+      };
+      try {
+        for (const entry of entries) {
+          const req = store.get(entry.date);
+          req.onsuccess = () => {
+            if (!replace && req.result && hasContent(req.result)) {
+              skipped++;
+              return;
+            }
+            try {
+              store.put(entry);
+              imported++;
+            } catch {
+              tx.abort();
+            }
+          };
+        }
+      } catch {
+        tx.abort();
+      }
     });
   }
   async save(entry: Entry): Promise<void> {

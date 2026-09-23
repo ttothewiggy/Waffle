@@ -4,3 +4,6 @@ out/
 .sites-runtime/
 *.tsbuildinfo
 .env*
+
+!/.env.example
+/public/sw.js
