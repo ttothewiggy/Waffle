@@ -199,11 +199,11 @@ export default function Journal() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="/" aria-label="Daybook home">
+        <a className="brand" href="/" aria-label="Waffle home">
           <span className="brand-icon">
             <BookOpen size={23} />
           </span>
-          daybook<span className="brand-dot">.</span>
+          waffle<span className="brand-dot">.</span>
         </a>
         <div className="notebook-label">YOUR PERSONAL JOURNAL</div>
         <nav aria-label="Journal">
@@ -226,7 +226,7 @@ export default function Journal() {
           </button>
         </nav>
         <div className="sidebar-bottom">
-          <div className="small-mark">d.</div>
+          <div className="small-mark">w.</div>
           <p>
             A little space
             <br />
@@ -527,7 +527,7 @@ export default function Journal() {
           </section>
         )}
         <footer className="main-footer">
-          <span>DAYBOOK</span>
+          <span>WAFFLE</span>
           <span>One day at a time.</span>
         </footer>
       </main>

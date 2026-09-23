@@ -1,5 +1,6 @@
 import { Entry, JournalRepository } from "./types";
 export class IndexedDBRepository implements JournalRepository {
+  // Keep the original database ID so renaming the app preserves existing entries.
   constructor(private name = "daybook-v1") {}
   private open(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
@@ -9,7 +10,7 @@ export class IndexedDBRepository implements JournalRepository {
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
       req.onblocked = () =>
-        reject(new Error("Close other Daybook tabs and retry."));
+        reject(new Error("Close other Waffle tabs and retry."));
     });
   }
   async list(): Promise<Entry[]> {

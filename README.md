@@ -1,4 +1,4 @@
-# Daybook
+# Waffle
 
 A mobile-first, device-local journal built with Next.js, React and TypeScript.
 
