@@ -230,7 +230,7 @@ export default function Journal() {
           <p>
             A little space
             <br />
-            <em>for your everyday.</em>
+            <em>for your waffles.</em>
           </p>
           <button className="privacy-link" onClick={() => setInfo(!info)}>
             About your journal <ArrowUpRight size={14} />
@@ -337,7 +337,7 @@ export default function Journal() {
               <div className="paper-top">
                 <span className="paper-label">
                   <span className="orange-dash" />
-                  THE EVERYDAY, REMEMBERED
+                  YOUR WAFFLES
                 </span>
                 <Feather size={19} />
               </div>
@@ -395,7 +395,7 @@ export default function Journal() {
               )}
             </div>
             <div className="below-paper">
-              <span>No perfect words needed. Just yours.</span>
+              <span>No perfect words needed. Just waffle.</span>
               <button onClick={() => setInfo(!info)}>
                 Stored on this device <ArrowUpRight size={14} />
               </button>
@@ -482,11 +482,11 @@ export default function Journal() {
                 {savedDays.length === 0 ? (
                   <div className="empty">
                     <BookOpen size={30} />
-                    <h2>Your story starts here.</h2>
+                    <h2>Waffle away</h2>
                     <p>
                       A thought, a small moment, a photo.
                       <br />
-                      There’s no wrong place to begin.
+                      Get Waffling.
                     </p>
                     <button className="primary" onClick={() => openDay(today)}>
                       Write about today <Feather size={16} />
@@ -528,7 +528,7 @@ export default function Journal() {
         )}
         <footer className="main-footer">
           <span>WAFFLE</span>
-          <span>One day at a time.</span>
+          <span>One waffle at a time.</span>
         </footer>
       </main>
       <nav className="mobile-nav" aria-label="Mobile journal">
