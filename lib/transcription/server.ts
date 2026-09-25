@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { sameOrigin } from "../server/origin";
 export const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
 const media = new Set([
   "audio/webm",
@@ -29,8 +30,7 @@ export async function transcribeRequest(
     actual = Buffer.from(code);
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
     return json({ error: "That dictation access code isn’t correct." }, 401);
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin)
+  if (!sameOrigin(request))
     return json({ error: "This recording must be sent from Waffle." }, 403);
   if (!request.headers.get("content-type")?.startsWith("multipart/form-data"))
     return json({ error: "Choose an audio recording." }, 415);

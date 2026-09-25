@@ -27,3 +27,15 @@ Stop the development server before moving the project. If it was moved while run
 ## Dictation setup
 
 See [v0.2 setup](docs/v0.2.md). Add server-only `OPENAI_API_KEY` and `WAFFLE_DICTATION_TOKEN` in Vercel and redeploy. The private access code must be at least 24 characters. Never enter the API key in the app. Live transcription uses OpenAI and requires a network connection.
+
+## Everyday journal controls
+
+Export & backup now has its own navigation item. Delete day moves an entry and its photos to Recently deleted, where you can restore it even after reopening; backups include active days only. Use the arrows beneath photos to reorder them. A− / A+ adjusts writing size and remembers the preference on this browser. The full product direction is in [the roadmap](docs/roadmap.md).
+
+### Inline writing, book pages and AI polish
+
+The **Write** view is one continuous text editor, followed by photos with optional captions (up to 500 characters). **Book** has editable text pages and photo pages at the end. Text saves while typing; page boundaries stay steady while focused and reflow when you leave the field. Page count responds to screen width and writing size. PDF export is still planned.
+
+**Polish with AI** offers Light tidy, Improve flow and Rewrite. Use the same private code as dictation. Review the draft before applying; **Before AI editing** below the document lets you inspect/restore saved originals. The existing `OPENAI_API_KEY` and `WAFFLE_DICTATION_TOKEN` power both routes—no new key is required. Restart the local server after changing environment variables; redeploy Vercel after pushing these changes. Only the selected day's text is sent for polishing, and only on request. No live journal content is used by automated tests.
+
+Backups include inline layouts and original versions (format v2); older v1 backups remain importable.

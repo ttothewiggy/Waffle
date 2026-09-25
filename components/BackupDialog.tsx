@@ -95,7 +95,7 @@ export default function BackupDialog({
       const result = await journalRepository.restore(preview, replace);
       await reload();
       setMessage(
-        `Restored ${result.imported} days. Kept ${result.skipped} existing days.`,
+        `Restored ${result.imported} ${result.imported === 1 ? "day" : "days"}. Kept ${result.skipped} existing ${result.skipped === 1 ? "day" : "days"}.`,
       );
       setPreview(null);
     } catch (e) {

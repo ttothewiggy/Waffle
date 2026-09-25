@@ -1,3 +1,5 @@
+import { validateBlocks, validateRevisions } from "../document/validate";
+import { textFor } from "../document/blocks";
 import { Entry, hasContent } from "../storage/types";
 export const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
 const types = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -41,7 +43,13 @@ export async function encodeBackup(entries: Entry[]): Promise<Blob> {
       let binary = "";
       for (let i = 0; i < bytes.length; i += 8192)
         binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-      photos.push({ id: p.id, name: p.name, type: p.type, data: btoa(binary) });
+      photos.push({
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        data: btoa(binary),
+        ...(p.caption !== undefined ? { caption: p.caption } : {}),
+      });
     }
     rows.push({ ...entry, photos });
   }
@@ -49,7 +57,7 @@ export async function encodeBackup(entries: Entry[]): Promise<Blob> {
     [
       JSON.stringify({
         format: "waffle-backup",
-        version: 1,
+        version: 2,
         exportedAt: new Date().toISOString(),
         entries: rows,
       }),
@@ -71,7 +79,7 @@ export async function decodeBackup(file: Blob): Promise<Entry[]> {
   }
   if (
     input.format !== "waffle-backup" ||
-    input.version !== 1 ||
+    (input.version !== 1 && input.version !== 2) ||
     !Array.isArray(input.entries) ||
     input.entries.length > 50000
   )
@@ -110,13 +118,30 @@ export async function decodeBackup(file: Blob): Promise<Entry[]> {
       return {
         id,
         name: str(p.name, 1024),
+        ...(p.caption !== undefined ? { caption: str(p.caption, 500) } : {}),
         type,
         blob: new Blob([bytes], { type }),
       };
     });
+    const text = str(e.text, 5 * 1024 * 1024);
+    const blocks =
+      e.blocks === undefined ? undefined : validateBlocks(e.blocks);
+    const revisions =
+      e.revisions === undefined ? undefined : validateRevisions(e.revisions);
+    if (
+      blocks &&
+      (textFor(blocks) !== text ||
+        blocks.filter((b) => b.type === "photo").length !== photos.length ||
+        blocks.some(
+          (b) => b.type === "photo" && !photos.some((p) => p.id === b.photoId),
+        ))
+    )
+      throw new Error("The backup document does not match its text or photos.");
     return {
       date,
-      text: str(e.text, 5 * 1024 * 1024),
+      text,
+      ...(blocks ? { blocks } : {}),
+      ...(revisions ? { revisions } : {}),
       createdAt: timestamp(e.createdAt),
       updatedAt: timestamp(e.updatedAt),
       schemaVersion: 1,
