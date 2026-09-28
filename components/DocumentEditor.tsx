@@ -9,7 +9,14 @@ export function JournalPhoto({ photo }: { photo: Photo }) {
     setUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [photo.blob]);
-  return url ? <img src={url} alt={photo.caption || photo.name} /> : null;
+  return url ? (
+    <img
+      src={url}
+      alt={photo.caption || photo.name}
+      loading="lazy"
+      decoding="async"
+    />
+  ) : null;
 }
 export function PhotoCaption({
   photo,
@@ -72,7 +79,6 @@ export default function DocumentEditor({
       />
       {!!entry.photos.length && (
         <section className="end-photos" aria-label="Photos and captions">
-          <div className="paper-label">THE DAY IN PICTURES</div>
           {entry.photos.map((photo) => (
             <figure className="captioned-photo" key={photo.id}>
               <JournalPhoto photo={photo} />

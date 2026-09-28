@@ -39,3 +39,9 @@ The **Write** view is one continuous text editor, followed by photos with option
 **Polish with AI** offers Light tidy, Improve flow and Rewrite. Use the same private code as dictation. Review the draft before applying; **Before AI editing** below the document lets you inspect/restore saved originals. The existing `OPENAI_API_KEY` and `WAFFLE_DICTATION_TOKEN` power both routes—no new key is required. Restart the local server after changing environment variables; redeploy Vercel after pushing these changes. Only the selected day's text is sent for polishing, and only on request. No live journal content is used by automated tests.
 
 Backups include inline layouts and original versions (format v2); older v1 backups remain importable.
+
+### September 2026 interface refinement
+
+The home screen is a journal overview with short previews, photo thumbnails and a calendar. Open a day for a full-screen entry; its small menu contains existing tools, previous versions and reading options. Prose defaults to 16px. Settings holds text-size and whole-diary options. Export permanently exposes JSON backup/restore; PDF export remains planned. Dated entries use URL fragments so reload and browser-back navigation retain context. Storage and backup formats are unchanged.
+
+Run `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` before publishing. Lint tooling requires Node 20.19+, 22.13+, or 24+.

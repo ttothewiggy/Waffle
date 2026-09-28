@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Download, BookOpen, ArchiveRestore, Undo2 } from "lucide-react";
+import { Download, Upload, BookOpen, Undo2 } from "lucide-react";
 import { journalRepository } from "@/lib/storage/indexed-db";
 import type { DeletedEntry } from "@/lib/storage/types";
 export default function ExportLibrary({
@@ -52,60 +52,41 @@ export default function ExportLibrary({
   }
   return (
     <section className="export-view">
-      <div className="eyebrow">
-        OFF THE PAGE, INTO YOUR LIFE <span className="little-line" />
-      </div>
-      <h1>
-        Yours to keep<span className="heading-dot">.</span>
-      </h1>
-      <p className="full-date">
-        Your words, your pictures, your collection of days.
+      <h1>Export & backup</h1>
+      <p className="export-intro">
+        {count} {count === 1 ? "entry" : "entries"} · {photos}{" "}
+        {photos === 1 ? "photo" : "photos"}
       </p>
-      <div className="export-feature">
-        <div className="export-symbol">
-          <Download size={28} />
-        </div>
-        <div>
-          <span className="eyebrow">EXPORT & BACKUP</span>
-          <h2>A copy for safekeeping.</h2>
-          <p>
-            Download your journal with every photo, or bring a Waffle backup
-            onto this device.
-          </p>
-          <p className="collection-count">
-            {count} {count === 1 ? "day" : "days"} · {photos}{" "}
-            {photos === 1 ? "photo" : "photos"}
-          </p>
+      <section className="data-card">
+        <h2>Journal backup</h2>
+        <p>
+          A restorable JSON file with your words, photos, captions and saved
+          versions.
+        </p>
+        <div className="dialog-actions">
           <button className="primary" disabled={busy} onClick={backup}>
             <Download size={18} />
-            Back up or restore
+            Back up journal
           </button>
-          <p className="dialog-note">
-            A Waffle backup is a restorable file, not a PDF. It isn’t encrypted;
-            keep it somewhere private.
-          </p>
+          <button className="secondary" disabled={busy} onClick={backup}>
+            <Upload size={18} />
+            Restore backup
+          </button>
         </div>
-      </div>
-      <div className="export-future">
-        <article>
-          <BookOpen size={24} />
-          <span className="planned-label">ON THE HORIZON</span>
-          <h2>A journal to leaf through.</h2>
-          <p>
-            Beautiful PDF editions with your chosen dates, photographs, and a
-            cover of your own.
-          </p>
-        </article>
-        <article>
-          <ArchiveRestore size={24} />
-          <span className="planned-label">A LITTLE FURTHER AHEAD</span>
-          <h2>On your bookshelf.</h2>
-          <p>
-            A printed collection of your days. Book printing is an idea we’re
-            exploring; it isn’t available yet.
-          </p>
-        </article>
-      </div>
+        <p className="dialog-note">
+          Backup files aren’t encrypted. Keep them somewhere private.
+        </p>
+      </section>
+      <section className="data-card pdf-card">
+        <BookOpen size={22} />
+        <h2>
+          Export journal as PDF <span>Planned</span>
+        </h2>
+        <p>
+          A readable edition to keep, share privately or print. PDF export isn’t
+          available yet; your JSON backup remains separate.
+        </p>
+      </section>
       <section className="deleted-section" aria-labelledby="deleted-title">
         <h2 id="deleted-title">Recently deleted</h2>
         <p>

@@ -3,18 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
   Download,
-  Trash2,
-  Undo2,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
+  Settings,
+  ArrowLeft,
+  MoreVertical,
   ImagePlus,
   Mic,
+  Undo2,
   Feather,
-  X,
-  Check,
-  LoaderCircle,
-  ArrowUpRight,
 } from "lucide-react";
 import { journalRepository } from "@/lib/storage/indexed-db";
 import {
@@ -25,6 +20,14 @@ import {
   type Photo,
 } from "@/lib/storage/types";
 import WaffleIcon from "./WaffleIcon";
+import JournalOverview from "./JournalOverview";
+import EntryOptions from "./EntryOptions";
+import VersionHistory from "./VersionHistory";
+import {
+  readLocation,
+  locationFor,
+  type JournalView,
+} from "@/lib/navigation/location";
 import ExportLibrary from "./ExportLibrary";
 import DeleteEntryDialog from "./DeleteEntryDialog";
 import DocumentEditor from "./DocumentEditor";
@@ -33,7 +36,7 @@ import BookView from "./BookView";
 import DiaryBook from "./DiaryBook";
 import AiDialog from "./AiDialog";
 import { blocksFor, textFor, applyDraft } from "@/lib/document/blocks";
-import type { DocumentBlock, Revision } from "@/lib/storage/types";
+import type { DocumentBlock } from "@/lib/storage/types";
 import BackupDialog from "./BackupDialog";
 import DictationDialog from "./DictationDialog";
 const parseDay = (key: string) => new Date(`${key}T12:00:00`);
@@ -46,17 +49,17 @@ export default function Journal() {
   const [selected, setSelected] = useState("");
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [ready, setReady] = useState(false);
-  const [view, setView] = useState<"write" | "days" | "keep" | "diary">(
-    "write",
-  );
-  const [month, setMonth] = useState(new Date());
+  const [view, setView] = useState<JournalView>("days");
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const overviewScroll = useRef(0);
+  const openedFromOverview = useRef(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [adding, setAdding] = useState(false);
   const [offline, setOffline] = useState(false);
-  const [info, setInfo] = useState(false);
-  const [writingSize, setWritingSize] = useState(18);
+  const [writingSize, setWritingSize] = useState(16);
   const [deleteDay, setDeleteDay] = useState<string | null>(null);
   const [lastDeleted, setLastDeleted] = useState<{
     id: string;
@@ -82,7 +85,7 @@ export default function Journal() {
       setEntries(map);
       setReady(true);
       setLastDeleted(null);
-      setStatus("Saved on this device");
+      setStatus("");
     } catch {
       setError(
         "Your journal could not be opened. Allow browser storage, then retry.",
@@ -91,8 +94,8 @@ export default function Journal() {
   }
   useEffect(() => {
     try {
-      const size = Number(localStorage.getItem("waffle-writing-size"));
-      if ([16, 18, 20, 22].includes(size)) setWritingSize(size);
+      const size = Number(localStorage.getItem("waffle-reader-size"));
+      if ([15, 16, 18, 20, 22].includes(size)) setWritingSize(size);
     } catch {}
     const key = dayKey();
     setToday(key);
@@ -121,6 +124,40 @@ export default function Journal() {
     window.addEventListener("beforeunload", guard);
     return () => window.removeEventListener("beforeunload", guard);
   }, []);
+  useEffect(() => {
+    const sync = () => {
+      const route = readLocation(window.location.hash, dayKey());
+      if (route.date) setSelected(route.date);
+      setView(route.view);
+      setOptionsOpen(false);
+      setVersionsOpen(false);
+      setPhotoError("");
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  useEffect(() => {
+    window.scrollTo(0, view === "days" ? overviewScroll.current : 0);
+  }, [view, selected]);
+  useEffect(() => {
+    if (status !== "Saved on this device") return;
+    const timeout = window.setTimeout(() => setStatus(""), 2000);
+    return () => clearTimeout(timeout);
+  }, [status]);
+  function navigate(next: JournalView, date?: string) {
+    const hash = locationFor(next, date);
+    if (window.location.hash === hash) {
+      setView(next);
+      if (date) setSelected(date);
+    } else window.location.hash = hash;
+  }
+  function backToJournal() {
+    if (openedFromOverview.current) {
+      openedFromOverview.current = false;
+      window.history.back();
+    } else navigate("days");
+  }
   function persist(entry: Entry) {
     const seq = ++sequence.current;
     pending.current.set(entry.date, entry);
@@ -172,17 +209,15 @@ export default function Journal() {
       date > today
     )
       return;
-    setMonth(
-      new Date(parseDay(date).getFullYear(), parseDay(date).getMonth(), 1),
-    );
-    setSelected(date);
-    setView("write");
-    setPhotoError("");
+    if (view === "days") overviewScroll.current = window.scrollY;
+    openedFromOverview.current = view === "days";
+    setReading(false);
+    navigate("write", date);
   }
   function resizeWriting(size: number) {
     setWritingSize(size);
     try {
-      localStorage.setItem("waffle-writing-size", String(size));
+      localStorage.setItem("waffle-reader-size", String(size));
     } catch {}
   }
   async function removeDay(date: string) {
@@ -256,16 +291,10 @@ export default function Journal() {
   const savedDays = Object.values(entries)
     .filter(hasContent)
     .sort((a, b) => b.date.localeCompare(a.date));
-  const words = entry.text.trim() ? entry.text.trim().split(/\s+/).length : 0;
-  const start = new Date(month.getFullYear(), month.getMonth(), 1);
-  const offset = (start.getDay() + 6) % 7;
-  const count = new Date(
-    month.getFullYear(),
-    month.getMonth() + 1,
-    0,
-  ).getDate();
   return (
-    <div className="app-shell">
+    <div
+      className={`journal-app ${view === "write" ? "entry-screen" : "overview-screen"}`}
+    >
       {aiSource && (
         <AiDialog
           text={aiSource.text}
@@ -318,109 +347,80 @@ export default function Journal() {
           }}
         />
       )}
-      <aside className="sidebar">
-        <a className="brand" href="/" aria-label="Waffle home">
-          <span className="brand-icon">
-            <WaffleIcon size={23} />
-          </span>
-          waffle<span className="brand-dot">.</span>
-        </a>
-        <div className="notebook-label">YOUR PERSONAL JOURNAL</div>
-        <nav aria-label="Journal">
-          <button
-            className={view === "write" ? "nav-item active" : "nav-item"}
-            onClick={() => openDay(today)}
-          >
-            <Feather size={19} />
-            Today<span className="nav-key">01</span>
+      {optionsOpen && (
+        <EntryOptions
+          close={() => setOptionsOpen(false)}
+          photo={() => fileInput.current?.click()}
+          dictate={() => setDictationDay(selected)}
+          polish={() => setAiSource(entry)}
+          history={() => setVersionsOpen(true)}
+          remove={() => setDeleteDay(selected)}
+          reading={reading}
+          toggleReading={() => setReading(!reading)}
+          canPolish={!!entry.text.trim()}
+          canDelete={hasContent(entry)}
+          hasHistory={!!entry.revisions?.length}
+          disabled={adding || undoBusy}
+          size={writingSize}
+          setSize={resizeWriting}
+        />
+      )}
+      {versionsOpen && (
+        <VersionHistory
+          revisions={entry.revisions || []}
+          close={() => setVersionsOpen(false)}
+          restore={(text) =>
+            update(
+              applyDraft(
+                entriesRef.current[selected] || newEntry(selected),
+                text,
+              ),
+            )
+          }
+        />
+      )}
+      {view === "write" ? (
+        <header className="entry-header">
+          <button aria-label="Back to journal" onClick={backToJournal}>
+            <ArrowLeft size={22} />
           </button>
+          <h1>
+            {selected
+              ? format(selected, {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })
+              : "Journal entry"}
+          </h1>
           <button
-            className={view === "days" ? "nav-item active" : "nav-item"}
-            onClick={() => setView("days")}
+            aria-label="Entry options"
+            disabled={!ready}
+            onClick={() => setOptionsOpen(true)}
           >
-            <CalendarDays size={19} />
-            Your days
-            <span className="nav-key">
-              {String(savedDays.length).padStart(2, "0")}
+            <MoreVertical size={22} />
+          </button>
+          {status && (
+            <span className="entry-save-status" role="status">
+              {status === "Saved on this device" ? "Saved" : status}
             </span>
-          </button>
-          <button
-            className={view === "diary" ? "nav-item active" : "nav-item"}
-            onClick={() => setView("diary")}
-          >
-            <BookOpen size={19} />
-            Whole diary
-          </button>
-          <button
-            className={view === "keep" ? "nav-item active" : "nav-item"}
-            onClick={() => setView("keep")}
-          >
-            <Download size={19} />
-            Export & backup
-          </button>
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="small-mark">w.</div>
-          <p>
-            A little space
-            <br />
-            <em>for your waffles.</em>
-          </p>
-          <button className="privacy-link" onClick={() => setInfo(!info)}>
-            About your journal <ArrowUpRight size={14} />
-          </button>
-        </div>
-      </aside>
-      <main>
-        <header className="topbar">
-          <span className="crumb">
-            MY JOURNAL <span>/</span>{" "}
-            {view === "write"
-              ? "A DAY AT A TIME"
-              : view === "days"
-                ? "THE DAYS COLLECTED"
-                : view === "diary"
-                  ? "EVERY DAY BELONGS"
-                  : "YOURS TO KEEP"}
-          </span>
-          <span className="save-status" role="status">
-            {status === "Saving…" ? (
-              <LoaderCircle size={14} className="spin" />
-            ) : (
-              <Check size={14} />
-            )}{" "}
-            {offline ? "Offline · " : ""}
-            {status || "Opening journal…"}
-          </span>
+          )}
         </header>
-        {info && (
-          <section className="notice">
-            <strong>Your words stay here.</strong>
-            <p>
-              Entries and photos are stored in this browser, on this device.
-              They aren’t encrypted or synced. Clearing browser data removes
-              them. Download a backup to keep another copy. Only recordings you
-              choose to transcribe and text you choose to polish are sent to
-              OpenAI.
-            </p>
-            <p>
-              On Android, open the published link in Chrome and choose “Add to
-              Home screen” or “Install app” when offered.
-            </p>
-            <div className="dialog-actions">
-              <button
-                className="secondary"
-                disabled={!ready || adding}
-                onClick={() => setBackupOpen(true)}
-              >
-                Backup & restore
-              </button>
-              <button onClick={() => setInfo(false)}>Got it</button>
-            </div>
-          </section>
-        )}
+      ) : (
+        <header className="overview-header">
+          <button
+            className="overview-brand"
+            onClick={() => navigate("days")}
+            aria-label="Waffle journal"
+          >
+            <WaffleIcon size={32} />
+            waffle<span>.</span>
+          </button>
+        </header>
+      )}
+      <main className="journal-main">
         {error && (
-          <div className="error" role="alert">
+          <div className="journal-error" role="alert">
             {error}
             <button
               onClick={() =>
@@ -434,131 +434,18 @@ export default function Journal() {
           </div>
         )}
         {lastDeleted && (
-          <div className="undo-notice" role="status">
-            <span>Entry for {lastDeleted.date} moved to Recently deleted.</span>
-            <button
-              disabled={undoBusy || adding}
-              onClick={() => void undoDelete()}
-            >
+          <div className="undo-banner" role="status">
+            Entry deleted.
+            <button disabled={undoBusy} onClick={() => void undoDelete()}>
               <Undo2 size={16} />
-              {undoBusy ? "Restoring…" : "Undo"}
+              Undo
             </button>
           </div>
         )}
         {!ready ? (
-          <div className="loading">
-            <BookOpen />
-            <p>
-              {error ? "Your journal is waiting." : "Opening your notebook…"}
-            </p>
-          </div>
-        ) : view === "diary" ? (
-          <DiaryBook
-            entries={entries}
-            today={today}
-            size={writingSize}
-            onChange={update}
-            onEdit={(date) => {
-              setReading(false);
-              openDay(date);
-            }}
-            disabled={undoBusy || adding}
-          />
-        ) : view === "keep" ? (
-          <ExportLibrary
-            count={savedDays.length}
-            photos={savedDays.reduce((n, e) => n + e.photos.length, 0)}
-            backup={() => setBackupOpen(true)}
-            flush={flush}
-            reload={load}
-          />
+          <p className="opening-journal">Opening your journal…</p>
         ) : view === "write" ? (
-          <section className="writing-view">
-            <div className="date-heading">
-              <div>
-                <div className="eyebrow">
-                  {selected === today ? "TODAY’S PAGE" : "FROM YOUR JOURNAL"}
-                  <span className="little-line" />
-                </div>
-                <h1>
-                  {format(selected, { weekday: "long" })}
-                  <span className="heading-dot">.</span>
-                </h1>
-                <p className="full-date">
-                  {format(selected, {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-              <div className="day-controls">
-                <button
-                  aria-label="Previous day"
-                  onClick={() => {
-                    const d = parseDay(selected);
-                    d.setDate(d.getDate() - 1);
-                    openDay(dayKey(d));
-                  }}
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <button
-                  aria-label="Next day"
-                  disabled={selected >= today}
-                  onClick={() => {
-                    const d = parseDay(selected);
-                    d.setDate(d.getDate() + 1);
-                    openDay(dayKey(d));
-                  }}
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="writing-toolbar">
-              {selected !== today && (
-                <button className="today-link" onClick={() => openDay(today)}>
-                  Back to today
-                </button>
-              )}
-              <div
-                className="writing-size"
-                role="group"
-                aria-label="Writing text size"
-              >
-                <button
-                  aria-label="Smaller writing text"
-                  disabled={writingSize <= 16}
-                  onClick={() => resizeWriting(writingSize - 2)}
-                >
-                  A−
-                </button>
-                <span>{writingSize}px</span>
-                <button
-                  aria-label="Larger writing text"
-                  disabled={writingSize >= 22}
-                  onClick={() => resizeWriting(writingSize + 2)}
-                >
-                  A+
-                </button>
-              </div>
-            </div>
-            <div className="document-mode" aria-label="Document view">
-              <button aria-pressed={!reading} onClick={() => setReading(false)}>
-                <Feather size={16} />
-                Write {!reading && <Check size={14} />}
-              </button>
-              <button aria-pressed={reading} onClick={() => setReading(true)}>
-                <BookOpen size={16} />
-                Book {reading && <Check size={14} />}
-              </button>
-              <span>
-                {reading
-                  ? "One day, page by page"
-                  : "Words and pictures, together"}
-              </span>
-            </div>
+          <article className="full-entry">
             {reading ? (
               <BookView
                 key={selected}
@@ -569,299 +456,157 @@ export default function Journal() {
                 disabled={undoBusy || adding}
               />
             ) : (
-              <div className="paper">
-                <div className="paper-top">
-                  <span className="paper-label">
-                    <span className="orange-dash" />
-                    YOUR WAFFLES
-                  </span>
-                  <Feather size={19} />
-                </div>
-                <DocumentEditor
-                  entry={entry}
-                  size={writingSize}
-                  disabled={undoBusy || adding}
-                  onChange={update}
-                />
-                <div className="paper-footer">
-                  <div className="editor-tools">
-                    <button
-                      className="attach-button"
-                      disabled={adding || undoBusy}
-                      onClick={() => {
-                        fileInput.current?.click();
-                      }}
-                    >
-                      <ImagePlus size={19} />
-                      {adding ? "Opening photos…" : "Add photos"}
-                    </button>
-                    <button
-                      className="attach-button"
-                      disabled={adding || undoBusy}
-                      onClick={() => setDictationDay(selected)}
-                    >
-                      <Mic size={18} />
-                      Dictate
-                    </button>
-                    <button
-                      className="attach-button"
-                      disabled={adding || undoBusy || !entry.text.trim()}
-                      onClick={() => setAiSource(entry)}
-                    >
-                      ✧ Polish with AI
-                    </button>
-                  </div>
-                  <span>
-                    {words} {words === 1 ? "word" : "words"}
-                    <span className="footer-dot">·</span>
-                    {entry.photos.length}{" "}
-                    {entry.photos.length === 1 ? "photo" : "photos"}
-                  </span>
-                </div>
-                <input
-                  ref={fileInput}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  multiple
-                  hidden
-                  onChange={(e) => void addPhotos(e.target.files)}
-                />
-                {photoError && (
-                  <p className="photo-error" role="alert">
-                    {photoError}
-                  </p>
-                )}
-              </div>
+              <DocumentEditor
+                entry={entry}
+                size={writingSize}
+                disabled={undoBusy || adding}
+                onChange={update}
+              />
             )}
-            {!!entry.revisions?.length && (
-              <details className="version-history">
-                <summary>
-                  Before AI editing · {entry.revisions.length} saved{" "}
-                  {entry.revisions.length === 1 ? "version" : "versions"}
-                </summary>
-                {[...entry.revisions].reverse().map((revision: Revision) => (
-                  <div key={revision.id}>
-                    <p>{new Date(revision.at).toLocaleString()}</p>
-                    <pre>{revision.text}</pre>
-                    <button
-                      className="secondary"
-                      disabled={undoBusy}
-                      onClick={() => {
-                        if (
-                          !window.confirm(
-                            "Restore this version? Your current text will also be kept in version history.",
-                          )
-                        )
-                          return;
-                        const current = entriesRef.current[selected];
-                        const restored = revision.blocks.filter(
-                          (b) =>
-                            b.type !== "photo" ||
-                            current.photos.some((p) => p.id === b.photoId),
-                        );
-                        const used = new Set(
-                          restored
-                            .filter((b) => b.type === "photo")
-                            .map((b) => b.photoId),
-                        );
-                        restored.push(
-                          ...current.photos
-                            .filter((p) => !used.has(p.id))
-                            .map((p) => ({
-                              id: `photo-${p.id}`,
-                              type: "photo" as const,
-                              photoId: p.id,
-                            })),
-                        );
-                        update({
-                          ...applyDraft(current, revision.text),
-                          blocks: restored,
-                        });
-                      }}
-                    >
-                      Restore this version
-                    </button>
-                  </div>
-                ))}
-              </details>
-            )}
-            <div className="below-paper">
-              <span>No perfect words needed. Just waffle.</span>
-              {hasContent(entry) && (
+            <div className="entry-end-tools">
+              <button
+                disabled={adding || undoBusy}
+                onClick={() => fileInput.current?.click()}
+              >
+                <ImagePlus size={18} />
+                {adding ? "Opening photos…" : "Add photos"}
+              </button>
+              {!hasContent(entry) && (
                 <button
-                  className="delete-day"
                   disabled={adding || undoBusy}
-                  onClick={() => setDeleteDay(selected)}
+                  onClick={() => setDictationDay(selected)}
                 >
-                  <Trash2 size={14} />
-                  Delete day
+                  <Mic size={18} />
+                  Dictate
                 </button>
               )}
-              <button onClick={() => setInfo(!info)}>
-                Stored on this device <ArrowUpRight size={14} />
-              </button>
             </div>
-          </section>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              hidden
+              onChange={(e) => void addPhotos(e.target.files)}
+            />
+            {photoError && (
+              <p className="dialog-error" role="alert">
+                {photoError}
+              </p>
+            )}
+          </article>
+        ) : view === "days" ? (
+          <JournalOverview entries={entries} today={today} openDay={openDay} />
+        ) : view === "keep" ? (
+          <ExportLibrary
+            count={savedDays.length}
+            photos={savedDays.reduce((n, e) => n + e.photos.length, 0)}
+            backup={() => setBackupOpen(true)}
+            flush={flush}
+            reload={load}
+          />
+        ) : view === "diary" ? (
+          <>
+            <button className="text-back" onClick={() => navigate("days")}>
+              <ArrowLeft size={18} />
+              Journal
+            </button>
+            <DiaryBook
+              entries={entries}
+              today={today}
+              size={writingSize}
+              onChange={update}
+              onEdit={openDay}
+              disabled={undoBusy || adding}
+            />
+          </>
         ) : (
-          <section className="days-view">
-            <div className="eyebrow">
-              YOUR NOTEBOOK <span className="little-line" />
-            </div>
-            <h1>
-              Days worth keeping<span className="heading-dot">.</span>
-            </h1>
-            <p className="full-date">
-              {savedDays.length === 0
-                ? "It begins with a single day."
-                : `${savedDays.length} ${savedDays.length === 1 ? "day" : "days"}, in your own words.`}
-            </p>
-            <div className="history-layout">
-              <section className="calendar" aria-label="Choose a day">
-                <div className="calendar-header">
-                  <button
-                    aria-label="Previous month"
-                    onClick={() =>
-                      setMonth(
-                        new Date(month.getFullYear(), month.getMonth() - 1, 1),
-                      )
-                    }
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <strong>
-                    {month.toLocaleDateString(undefined, {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </strong>
-                  <button
-                    aria-label="Next month"
-                    disabled={
-                      month.getFullYear() === parseDay(today).getFullYear() &&
-                      month.getMonth() === parseDay(today).getMonth()
-                    }
-                    onClick={() =>
-                      setMonth(
-                        new Date(month.getFullYear(), month.getMonth() + 1, 1),
-                      )
-                    }
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-                <div className="calendar-grid">
-                  {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-                    <span key={i} className="weekday">
-                      {d}
-                    </span>
+          <section className="settings-view">
+            <h1>Settings</h1>
+            <section>
+              <h2>Reading</h2>
+              <label className="reader-size">
+                Journal text size
+                <select
+                  value={writingSize}
+                  onChange={(e) => resizeWriting(Number(e.target.value))}
+                >
+                  {[15, 16, 18, 20, 22].map((size) => (
+                    <option key={size} value={size}>
+                      {size}px{size === 16 ? " · Default" : ""}
+                    </option>
                   ))}
-                  {Array.from({ length: offset }, (_, i) => (
-                    <span key={`blank${i}`} />
-                  ))}
-                  {Array.from({ length: count }, (_, i) => {
-                    const key = dayKey(
-                      new Date(month.getFullYear(), month.getMonth(), i + 1),
-                    );
-                    return (
-                      <button
-                        key={key}
-                        aria-label={`${format(key, { month: "long", day: "numeric", year: "numeric" })}${entries[key] && hasContent(entries[key]) ? ", has entry" : ""}`}
-                        className={`${key === today ? "today " : ""}${entries[key] && hasContent(entries[key]) ? "has-entry" : ""}`}
-                        disabled={key > today}
-                        onClick={() => openDay(key)}
-                      >
-                        {i + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="calendar-key">
-                  <span /> A day you’ve kept
+                </select>
+              </label>
+              <button
+                className="settings-row"
+                onClick={() => navigate("diary")}
+              >
+                <BookOpen size={19} />
+                Page through your diary
+              </button>
+              <p>Includes unwritten days between your first entry and today.</p>
+            </section>
+            <section>
+              <h2>Your data</h2>
+              <button className="settings-row" onClick={() => navigate("keep")}>
+                <Download size={19} />
+                Export, backup & restore
+              </button>
+              <p>
+                Entries and photos live in this browser on this device. They
+                aren’t encrypted or synced. Keep a backup before clearing
+                browser data.
+              </p>
+              <p>
+                Only recordings you choose to transcribe and text you choose to
+                polish are sent to OpenAI.
+              </p>
+            </section>
+            <section>
+              <h2>On your phone</h2>
+              <p>
+                Open Waffle in Chrome and choose “Add to Home screen” or
+                “Install app” to open it like an app.
+              </p>
+              {offline && (
+                <p>
+                  You’re offline. Writing and saved entries are still available.
                 </p>
-              </section>
-              <div className="entry-list">
-                {savedDays.length === 0 ? (
-                  <div className="empty">
-                    <BookOpen size={30} />
-                    <h2>Waffle away</h2>
-                    <p>
-                      A thought, a small moment, a photo.
-                      <br />
-                      Get Waffling.
-                    </p>
-                    <button className="primary" onClick={() => openDay(today)}>
-                      Write about today <Feather size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  savedDays.map((e) => (
-                    <button
-                      key={e.date}
-                      className="entry-card"
-                      onClick={() => openDay(e.date)}
-                    >
-                      <div className="entry-date">
-                        <strong>{format(e.date, { day: "2-digit" })}</strong>
-                        <span>{format(e.date, { month: "short" })}</span>
-                      </div>
-                      <div>
-                        <h2>
-                          {format(e.date, { weekday: "long" })}
-                          {e.date === today && (
-                            <span className="today-badge">Today</span>
-                          )}
-                        </h2>
-                        <p>{e.text.trim() || "A day in photographs"}</p>
-                        <span className="entry-meta">
-                          {e.photos.length > 0
-                            ? `${e.photos.length} ${e.photos.length === 1 ? "photo" : "photos"} · `
-                            : ""}
-                          {format(e.date, { year: "numeric" })}
-                        </span>
-                      </div>
-                      <ChevronRight size={18} />
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
+              )}
+            </section>
           </section>
         )}
-        <footer className="main-footer">
-          <span>WAFFLE</span>
-          <span>One waffle at a time.</span>
-        </footer>
       </main>
-      <nav className="mobile-nav" aria-label="Mobile journal">
-        <button
-          className={view === "write" ? "selected" : ""}
-          onClick={() => openDay(today)}
-        >
-          <Feather size={20} />
-          Today
-        </button>
-        <button
-          className={view === "days" ? "selected" : ""}
-          onClick={() => setView("days")}
-        >
-          <CalendarDays size={20} />
-          Your days
-        </button>
-        <button
-          className={view === "keep" ? "selected" : ""}
-          onClick={() => setView("keep")}
-        >
-          <Download size={20} />
-          Export & backup
-        </button>
-        <button
-          className={view === "diary" ? "selected" : ""}
-          onClick={() => setView("diary")}
-        >
-          <BookOpen size={20} />
-          Whole diary
-        </button>
-      </nav>
+      {view !== "write" && (
+        <nav className="overview-nav" aria-label="Main navigation">
+          <button
+            aria-current={view === "days" ? "page" : undefined}
+            onClick={() => navigate("days")}
+          >
+            <BookOpen size={20} />
+            Journal
+          </button>
+          <button onClick={() => openDay(today)}>
+            <Feather size={20} />
+            Today
+          </button>
+          <button
+            aria-current={view === "keep" ? "page" : undefined}
+            onClick={() => navigate("keep")}
+          >
+            <Download size={20} />
+            Export
+          </button>
+          <button
+            aria-current={view === "settings" ? "page" : undefined}
+            onClick={() => navigate("settings")}
+          >
+            <Settings size={20} />
+            Settings
+          </button>
+        </nav>
+      )}
     </div>
   );
 }
