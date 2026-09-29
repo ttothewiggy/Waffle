@@ -553,3 +553,186 @@ body {
     height: 58px;
   }
 }
+
+/* Final palette: walnut surrounds a responsive parchment sheet. */
+body {
+  background: #291f19;
+}
+.journal-app {
+  --ink: #eee0c9;
+  --muted: #bcaa90;
+  --line: #5a4837;
+  --paper: #ecdfc5;
+  background: #291f19;
+  color: var(--ink);
+}
+.overview-brand,
+.journal-app h1,
+.journal-month h2 {
+  color: #eee0c9;
+}
+.calendar-toggle,
+.quiet-icon {
+  color: #c3a783;
+}
+.today-action {
+  background: #3a2c22;
+  border-color: #6d533a;
+  color: #ecdbc0;
+}
+.today-action span,
+.day-preview {
+  color: #c1ad91;
+}
+.journal-day {
+  border-color: #503e2d;
+}
+.day-number {
+  color: #c3a278;
+}
+.day-name small {
+  background: #493623;
+  color: #ddc19b;
+}
+.overview-nav {
+  background: #261d17f5;
+  border-color: #614a32;
+  padding-top: 6px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+}
+.overview-nav button {
+  color: #b9a68a;
+}
+.overview-nav button[aria-current="page"] {
+  color: #f0d6aa;
+}
+.entry-header {
+  background: #291f19f5;
+  border-color: #463426;
+}
+.entry-header > button {
+  color: #d9c09b;
+}
+.entry-save-status {
+  background: #382a20;
+  color: #d5bc94;
+}
+.journal-app.entry-screen main.journal-main {
+  max-width: 780px;
+  padding: 10px 10px calc(92px + env(safe-area-inset-bottom));
+}
+.full-entry {
+  --ink: #3e3026;
+  --muted: #806c53;
+  --line: #cabb9e;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(100svh - 164px);
+  padding: 42px 18px 12px;
+  background: #ecdfc5;
+  color: #3e3026;
+  border: 1px solid #ae9370;
+  border-radius: 3px 13px 4px 4px;
+  box-shadow:
+    3px 3px 0 #b7a07b,
+    0 6px 18px #100a0730;
+}
+.full-entry::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 24px;
+  width: 18px;
+  height: 38px;
+  background: linear-gradient(90deg, #713b2e, #925340 55%, #70392d);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 79%, 0 100%);
+  pointer-events: none;
+}
+.full-entry textarea.continuous-editor {
+  min-height: calc(100svh - 290px);
+  color: #3e3026;
+}
+.full-entry textarea.continuous-editor::placeholder {
+  color: #8c775b;
+}
+.entry-end-tools {
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+.entry-end-tools button {
+  color: #785739;
+}
+.full-entry .photo-caption {
+  color: #796449;
+}
+.journal-dialog {
+  --ink: #3e3026;
+  --muted: #806c53;
+  --line: #cabb9e;
+  --paper: #ecdfc5;
+  background: #ecdfc5;
+  color: #3e3026;
+}
+.settings-view p,
+.data-card p,
+.deleted-section p,
+.export-intro {
+  color: #bcaa90;
+}
+.journal-app .deleted-row {
+  color: #e7d7bf;
+}
+.pdf-card h2 span {
+  background: #493623;
+  color: #ddc19b;
+}
+.reader-size select {
+  background: #ecdfc5;
+}
+.journal-error,
+.undo-banner {
+  color: #593c29;
+  background: #ecdfc5;
+}
+.journal-error {
+  color: #873e2a;
+}
+.overview-calendar {
+  background: #34271e;
+  border-color: #6b5137;
+}
+.overview-calendar-grid .is-today {
+  background: #634c32;
+}
+.overview-calendar-grid .is-written:after {
+  background: #d0ae7b;
+}
+.journal-app .book-page {
+  --ink: #3e3026;
+  --muted: #806c53;
+  color: #3e3026;
+  background: #ecdfc5;
+}
+.full-entry .book-view {
+  margin-top: 8px;
+}
+@media (max-width: 380px) {
+  .journal-app.entry-screen main.journal-main {
+    padding-left: 6px;
+    padding-right: 8px;
+  }
+  .full-entry {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+@media (min-width: 900px) {
+  .journal-app.entry-screen main.journal-main {
+    padding-top: 20px;
+  }
+  .full-entry {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+}

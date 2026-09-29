@@ -20,6 +20,7 @@ import {
   type Photo,
 } from "@/lib/storage/types";
 import WaffleIcon from "./WaffleIcon";
+import { READING_SIZES } from "@/lib/preferences/reading";
 import JournalOverview from "./JournalOverview";
 import EntryOptions from "./EntryOptions";
 import VersionHistory from "./VersionHistory";
@@ -74,6 +75,7 @@ export default function Journal() {
   const serial = useRef(Promise.resolve());
   const sequence = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
+  const openDictation = () => setDictationDay(selected);
   async function load() {
     setError("");
     try {
@@ -95,7 +97,7 @@ export default function Journal() {
   useEffect(() => {
     try {
       const size = Number(localStorage.getItem("waffle-reader-size"));
-      if ([15, 16, 18, 20, 22].includes(size)) setWritingSize(size);
+      if (READING_SIZES.includes(size)) setWritingSize(size);
     } catch {}
     const key = dayKey();
     setToday(key);
@@ -351,7 +353,7 @@ export default function Journal() {
         <EntryOptions
           close={() => setOptionsOpen(false)}
           photo={() => fileInput.current?.click()}
-          dictate={() => setDictationDay(selected)}
+          dictate={openDictation}
           polish={() => setAiSource(entry)}
           history={() => setVersionsOpen(true)}
           remove={() => setDeleteDay(selected)}
@@ -471,15 +473,10 @@ export default function Journal() {
                 <ImagePlus size={18} />
                 {adding ? "Opening photos…" : "Add photos"}
               </button>
-              {!hasContent(entry) && (
-                <button
-                  disabled={adding || undoBusy}
-                  onClick={() => setDictationDay(selected)}
-                >
-                  <Mic size={18} />
-                  Dictate
-                </button>
-              )}
+              <button disabled={adding || undoBusy} onClick={openDictation}>
+                <Mic size={18} />
+                Dictate
+              </button>
             </div>
             <input
               ref={fileInput}
@@ -531,7 +528,7 @@ export default function Journal() {
                   value={writingSize}
                   onChange={(e) => resizeWriting(Number(e.target.value))}
                 >
-                  {[15, 16, 18, 20, 22].map((size) => (
+                  {READING_SIZES.map((size) => (
                     <option key={size} value={size}>
                       {size}px{size === 16 ? " · Default" : ""}
                     </option>
@@ -578,35 +575,38 @@ export default function Journal() {
           </section>
         )}
       </main>
-      {view !== "write" && (
-        <nav className="overview-nav" aria-label="Main navigation">
-          <button
-            aria-current={view === "days" ? "page" : undefined}
-            onClick={() => navigate("days")}
-          >
-            <BookOpen size={20} />
-            Journal
-          </button>
-          <button onClick={() => openDay(today)}>
-            <Feather size={20} />
-            Today
-          </button>
-          <button
-            aria-current={view === "keep" ? "page" : undefined}
-            onClick={() => navigate("keep")}
-          >
-            <Download size={20} />
-            Export
-          </button>
-          <button
-            aria-current={view === "settings" ? "page" : undefined}
-            onClick={() => navigate("settings")}
-          >
-            <Settings size={20} />
-            Settings
-          </button>
-        </nav>
-      )}
+      <nav className="overview-nav" aria-label="Main navigation">
+        <button
+          aria-current={view === "days" ? "page" : undefined}
+          onClick={() => navigate("days")}
+        >
+          <BookOpen size={20} />
+          Journal
+        </button>
+        <button
+          aria-current={
+            view === "write" && selected === today ? "page" : undefined
+          }
+          onClick={() => openDay(today)}
+        >
+          <Feather size={20} />
+          Today
+        </button>
+        <button
+          aria-current={view === "keep" ? "page" : undefined}
+          onClick={() => navigate("keep")}
+        >
+          <Download size={20} />
+          Export
+        </button>
+        <button
+          aria-current={view === "settings" ? "page" : undefined}
+          onClick={() => navigate("settings")}
+        >
+          <Settings size={20} />
+          Settings
+        </button>
+      </nav>
     </div>
   );
 }

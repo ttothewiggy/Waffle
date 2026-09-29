@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Final visual refinement — 2026-09-29
+
+- Restored a dark walnut interface around a warmer parchment entry page.
+- Added a responsive page frame and small burgundy corner bookmark.
+- Kept bottom navigation visible inside entries, with space below content for the toolbar and phone safe area.
+- Made Dictate visible beside Add photos even for existing entries; both microphone entry points share the same dialog.
+- Extended saved text-size options down to 8px in Settings and entry options; the default remains 16px.
+- Requested content resizing around the on-screen keyboard in supporting browsers.
+- Validation: lint, 29 automated tests and production build passed. Mobile browser checks confirmed 8px persistence, both dictation entry points, photo attachment/reopening and Export access.
+
 ### UI refinement — 2026-09-28
 
 - Made the journal overview the home screen, with dated previews, photo thumbnails, a Today action and an optional calendar.

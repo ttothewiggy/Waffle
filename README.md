@@ -45,3 +45,5 @@ Backups include inline layouts and original versions (format v2); older v1 backu
 The home screen is a journal overview with short previews, photo thumbnails and a calendar. Open a day for a full-screen entry; its small menu contains existing tools, previous versions and reading options. Prose defaults to 16px. Settings holds text-size and whole-diary options. Export permanently exposes JSON backup/restore; PDF export remains planned. Dated entries use URL fragments so reload and browser-back navigation retain context. Storage and backup formats are unchanged.
 
 Run `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` before publishing. Lint tooling requires Node 20.19+, 22.13+, or 24+.
+
+The final visual pass restores a walnut shell, responsive parchment frame and corner bookmark. Bottom navigation stays visible in entries; Dictate and Add photos are both available below the content. Text size can be set from 8px to 22px in the existing reading controls (16px default). Supporting browsers resize content around the keyboard.

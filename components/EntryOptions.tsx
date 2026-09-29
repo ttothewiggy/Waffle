@@ -1,4 +1,5 @@
 "use client";
+import { READING_SIZES } from "@/lib/preferences/reading";
 import { useEffect, useRef } from "react";
 import {
   X,
@@ -95,7 +96,7 @@ export default function EntryOptions({
       <label className="reader-size">
         Text size
         <select value={size} onChange={(e) => setSize(Number(e.target.value))}>
-          {[15, 16, 18, 20, 22].map((value) => (
+          {READING_SIZES.map((value) => (
             <option key={value} value={value}>
               {value}px{value === 16 ? " · Default" : ""}
             </option>
