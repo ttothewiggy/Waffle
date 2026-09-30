@@ -2,7 +2,15 @@
 
 ## Unreleased
 
-### Accounts and sync — 2026-09-30 (pending live Supabase setup)
+### Sync recovery — 2026-09-30
+
+- Added request timeouts, including stalled response downloads: 30 seconds for ordinary requests and two minutes for photo transfers.
+- Added clearer recovery messages for expired sign-ins, access errors, missing setup/files, rate limits, oversized uploads and service outages.
+- Kept provider error details out of user-facing sync messages.
+- Added tests for cancellation, interrupted transfers, retrying and an uncertain save that completed on the server.
+
+
+### Accounts and sync — 2026-09-30
 
 - Added optional email/password accounts, email confirmation and password reset.
 - Added separate offline journal stores per account and explicit import from the original device-only journal.

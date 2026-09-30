@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { cloudFetch } from "./request";
 let client: SupabaseClient | null = null;
 export function cloudClient() {
   if (typeof window === "undefined") return null;
@@ -8,6 +9,7 @@ export function cloudClient() {
   if (!key.startsWith("sb_publishable_"))
     throw new Error("Use the Supabase publishable key, never a secret key.");
   return (client ||= createClient(url, key, {
+    global: { fetch: cloudFetch() },
     auth: {
       persistSession: true,
       autoRefreshToken: true,

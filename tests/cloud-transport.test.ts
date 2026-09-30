@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
 import { SupabaseTransport } from "../lib/cloud/transport";
+import { cloudFetch } from "../lib/cloud/request";
 import { newEntry } from "../lib/storage/types";
 test("private photo transport uploads once, preserves captions, verifies bytes and sends the expected account identity", async () => {
   const user = "11111111-1111-4111-8111-111111111111";
@@ -22,7 +23,7 @@ test("private photo transport uploads once, preserves captions, verifies bytes a
       },
       auth: { persistSession: false, autoRefreshToken: false },
       global: {
-        fetch: async (input, options) => {
+        fetch: cloudFetch(async (input, options) => {
           const request = new Request(input, options);
           const url = new URL(request.url);
           if (url.pathname.endsWith("/rpc/waffle_save_journal")) {
@@ -41,7 +42,7 @@ test("private photo transport uploads once, preserves captions, verifies bytes a
             });
           }
           return new Response(corrupt ? new Blob(["wrong"]) : files.get(path));
-        },
+        }),
       },
     },
   );

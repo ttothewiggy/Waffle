@@ -219,3 +219,24 @@ test("choosing this device preserves displaced cloud writing and cloud trash", a
     ),
   );
 });
+
+test("an uncertain timed-out save retains local changes and never blindly overwrites a committed cloud copy", async () => {
+  const { CloudTimeout } = await import("../lib/cloud/request");
+  const local = repo(),
+    remote = new Remote(),
+    sync = engine(local, remote);
+  await local.save({ ...newEntry("2026-09-30"), text: "Keep these words" });
+  remote.afterWrite = async () => {
+    remote.afterWrite = null;
+    throw new CloudTimeout();
+  };
+  await sync.sync();
+  assert.equal(sync.status, "error");
+  assert.ok(sync.message.includes("took too long"));
+  assert.equal((await local.snapshot()).state.synced, 0);
+  assert.equal((await local.list())[0].text, "Keep these words");
+  await sync.sync();
+  assert.equal(sync.status, "conflict");
+  assert.equal(remote.value!.revision, 1);
+  assert.equal(remote.value!.manifest.entries[0].text, "Keep these words");
+});

@@ -1,3 +1,4 @@
+import { syncErrorMessage } from "./errors";
 import type { IndexedDBRepository } from "../storage/indexed-db";
 import {
   SyncConflict,
@@ -99,11 +100,7 @@ export class JournalSync {
           "conflict",
           "Another device saved while syncing. Retry sync to review both versions.",
         );
-      else
-        this.state(
-          "error",
-          "Couldn’t sync. Your device copy is safe. Check your connection and account setup, then retry.",
-        );
+      else this.state("error", syncErrorMessage(error));
     }
   }
   async cloudCopy() {

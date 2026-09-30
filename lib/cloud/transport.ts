@@ -1,3 +1,4 @@
+import { CloudProblem } from "./errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Entry, Photo } from "../storage/types";
 import type { JournalSnapshot } from "../storage/indexed-db";
@@ -51,12 +52,12 @@ export class SupabaseTransport implements CloudTransport {
     private userId: string,
   ) {}
   async read(): Promise<RemoteJournal | null> {
-    const { data, error } = await this.client
+    const { data, error, status } = await this.client
       .from("waffle_journals")
       .select("revision,manifest")
       .eq("user_id", this.userId)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw { ...error, status };
     if (!data) return null;
     const m = data.manifest as Manifest;
     if (
@@ -65,7 +66,9 @@ export class SupabaseTransport implements CloudTransport {
       !Array.isArray(m.trash) ||
       !Number.isSafeInteger(data.revision)
     )
-      throw new Error("This cloud journal needs a newer version of Waffle.");
+      throw new CloudProblem(
+        "This cloud journal needs a newer version of Waffle. Your device copy has not been changed.",
+      );
     return { revision: data.revision, manifest: m };
   }
   async prepare(
@@ -98,7 +101,7 @@ export class SupabaseTransport implements CloudTransport {
       trash.push({ ...item, entry: await convert(item.entry) });
     const manifest: Manifest = { version: 1, entries, trash };
     if (new Blob([JSON.stringify(manifest)]).size > 10 * 1024 * 1024)
-      throw new Error(
+      throw new CloudProblem(
         "This journal exceeds the current cloud text limit. Your device copy is safe; export a backup.",
       );
     return manifest;
@@ -138,7 +141,7 @@ export class SupabaseTransport implements CloudTransport {
             data.size > 20 * 1024 * 1024 ||
             (await hash(data)) !== path.split("/")[1]
           )
-            throw new Error(
+            throw new CloudProblem(
               "A cloud photo could not be verified. Your local journal was not changed.",
             );
           blob = data;
@@ -176,14 +179,17 @@ export class SupabaseTransport implements CloudTransport {
     return { entries, trash };
   }
   async write(expectedRevision: number, manifest: Manifest) {
-    const { data, error } = await this.client.rpc("waffle_save_journal", {
-      expected_user: this.userId,
-      expected_revision: expectedRevision,
-      new_manifest: manifest,
-    });
+    const { data, error, status } = await this.client.rpc(
+      "waffle_save_journal",
+      {
+        expected_user: this.userId,
+        expected_revision: expectedRevision,
+        new_manifest: manifest,
+      },
+    );
     if (error?.code === "40001")
       throw new SyncConflict("Another device has newer changes.");
-    if (error) throw error;
+    if (error) throw { ...error, status };
     if (!Number.isSafeInteger(data))
       throw new Error("Unexpected cloud response; retry sync.");
     return data as number;

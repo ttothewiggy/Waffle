@@ -83,3 +83,14 @@ This is the accounts-and-sync slice of Milestone 4, not completion of privacy ha
 - Clear cache-removal controls for shared devices, plus privacy wording and retention policy.
 
 Do not advertise administrator-inaccessible journals or instant complete deletion yet.
+
+
+## Sync recovery updates
+
+Cloud requests now have deadlines covering both response headers and the full response body: 30 seconds for ordinary requests, two minutes for Storage transfers. These are per request, not per journal. Failed transfers keep local changes pending; the existing automatic retry and Sync now remain available. Authentication requests use the same bounded transport.
+
+Messages distinguish expired sign-in, access denial, missing setup or files, rate limiting, oversized uploads, service outages and timeouts. Raw provider errors are not shown in the journal sync status.
+
+A timeout does not prove a server write failed. If the cloud saved successfully but its response was lost, the next attempt may ask you to resolve a conflict. Waffle deliberately retains both copies rather than overwriting blindly.
+
+Live account creation, cross-device syncing and backup imports have been reported working. Overlap/conflict testing is still in progress.
