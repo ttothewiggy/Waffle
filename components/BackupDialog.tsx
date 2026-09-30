@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download, Upload, X } from "lucide-react";
 import { Entry, dayKey, hasContent } from "@/lib/storage/types";
 import { decodeBackup, encodeBackup } from "@/lib/backup/format";
-import { journalRepository } from "@/lib/storage/indexed-db";
+import { useJournalAccount } from "./CloudAccount";
 export default function BackupDialog({
   close,
   flush,
@@ -15,6 +15,7 @@ export default function BackupDialog({
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     input = useRef<HTMLInputElement>(null);
+  const { repository: journalRepository } = useJournalAccount();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),

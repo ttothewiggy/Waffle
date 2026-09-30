@@ -11,7 +11,7 @@ import {
   Undo2,
   Feather,
 } from "lucide-react";
-import { journalRepository } from "@/lib/storage/indexed-db";
+import { useJournalAccount, AccountSettings } from "./CloudAccount";
 import {
   dayKey,
   newEntry,
@@ -44,6 +44,12 @@ const parseDay = (key: string) => new Date(`${key}T12:00:00`);
 const format = (key: string, options: Intl.DateTimeFormatOptions) =>
   parseDay(key).toLocaleDateString(undefined, options);
 export default function Journal() {
+  const {
+    repository: journalRepository,
+    revision,
+    account,
+    engine,
+  } = useJournalAccount();
   const [reading, setReading] = useState(false);
   const [aiSource, setAiSource] = useState<Entry | null>(null);
   const [today, setToday] = useState("");
@@ -79,7 +85,9 @@ export default function Journal() {
   async function load() {
     setError("");
     try {
+      const before = sequence.current;
       const rows = await journalRepository.list();
+      if (before !== sequence.current || pending.current.size) return;
       const map = Object.fromEntries(
         rows.map((e) => [e.date, { ...e, photos: orderedPhotos(e) }]),
       );
@@ -94,6 +102,11 @@ export default function Journal() {
       );
     }
   }
+  useEffect(() => {
+    void flush()
+      .then(load)
+      .catch(() => {});
+  }, [revision]);
   useEffect(() => {
     try {
       const size = Number(localStorage.getItem("waffle-reader-size"));
@@ -421,6 +434,12 @@ export default function Journal() {
         </header>
       )}
       <main className="journal-main">
+        {account && (
+          <p className="cloud-status" role="status">
+            {engine?.message ||
+              "Saved account copy on this device — sign in through Settings to sync."}
+          </p>
+        )}
         {error && (
           <div className="journal-error" role="alert">
             {error}
@@ -520,6 +539,7 @@ export default function Journal() {
         ) : (
           <section className="settings-view">
             <h1>Settings</h1>
+            <AccountSettings flush={flush} reload={load} />
             <section>
               <h2>Reading</h2>
               <label className="reader-size">
@@ -551,9 +571,9 @@ export default function Journal() {
                 Export, backup & restore
               </button>
               <p>
-                Entries and photos live in this browser on this device. They
-                aren’t encrypted or synced. Keep a backup before clearing
-                browser data.
+                {account
+                  ? "Your account journal is saved on this device and synced when connected. Wait for the synced message before switching devices. Keep an independent backup."
+                  : "Entries and photos live in this browser on this device. Sign in to set up cloud sync, or keep using Waffle locally. Keep a backup before clearing browser data."}
               </p>
               <p>
                 Only recordings you choose to transcribe and text you choose to

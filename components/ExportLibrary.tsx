@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Download, Upload, BookOpen, Undo2 } from "lucide-react";
-import { journalRepository } from "@/lib/storage/indexed-db";
+import { useJournalAccount } from "./CloudAccount";
 import type { DeletedEntry } from "@/lib/storage/types";
 export default function ExportLibrary({
   count,
@@ -16,6 +16,11 @@ export default function ExportLibrary({
   flush: () => Promise<void>;
   reload: () => Promise<void>;
 }) {
+  const {
+    repository: journalRepository,
+    revision,
+    account,
+  } = useJournalAccount();
   const [deleted, setDeleted] = useState<DeletedEntry[]>([]),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
@@ -33,7 +38,7 @@ export default function ExportLibrary({
   }
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [revision]);
   async function recover(id: string) {
     setBusy(true);
     setError("");
@@ -90,8 +95,9 @@ export default function ExportLibrary({
       <section className="deleted-section" aria-labelledby="deleted-title">
         <h2 id="deleted-title">Recently deleted</h2>
         <p>
-          Deleted days remain on this device until restored. They aren’t
-          included in backup files.
+          {account
+            ? "Deleted days sync with your account and remain recoverable. They aren’t included in JSON backup files."
+            : "Deleted days remain on this device until restored. They aren’t included in backup files."}
         </p>
         {error && (
           <div role="alert">

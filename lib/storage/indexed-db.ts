@@ -2,10 +2,30 @@ import { Entry, DeletedEntry, JournalRepository, hasContent } from "./types";
 export class IndexedDBRepository implements JournalRepository {
   // Keep the original database ID so renaming the app preserves existing entries.
   constructor(private name = "daybook-v1") {}
+  private listeners = new Set<() => void>();
+  subscribe(listener: () => void) {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+  private changed() {
+    this.listeners.forEach((listener) => listener());
+  }
+  private dirty(tx: IDBTransaction) {
+    const store = tx.objectStore("sync");
+    const req = store.get("state");
+    req.onsuccess = () => {
+      const state = req.result || { generation: 0, synced: 0, revision: 0 };
+      store.put({ ...state, generation: state.generation + 1 }, "state");
+    };
+  }
   private open(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(this.name, 2);
+      const req = indexedDB.open(this.name, 3);
       req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains("sync"))
+          req.result.createObjectStore("sync");
         if (!req.result.objectStoreNames.contains("entries"))
           req.result.createObjectStore("entries", { keyPath: "date" });
         if (!req.result.objectStoreNames.contains("trash"))
@@ -53,12 +73,14 @@ export class IndexedDBRepository implements JournalRepository {
   async trash(date: string): Promise<DeletedEntry> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(["entries", "trash"], "readwrite");
+      const tx = db.transaction(["entries", "trash", "sync"], "readwrite");
+      this.dirty(tx);
       const entries = tx.objectStore("entries");
       let deleted: DeletedEntry;
       let reason = "Could not delete the entry. Nothing was changed.";
       tx.oncomplete = () => {
         db.close();
+        this.changed();
         resolve(deleted);
       };
       tx.onabort = () => {
@@ -89,11 +111,13 @@ export class IndexedDBRepository implements JournalRepository {
   async recover(id: string): Promise<Entry> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(["entries", "trash"], "readwrite");
+      const tx = db.transaction(["entries", "trash", "sync"], "readwrite");
+      this.dirty(tx);
       let recovered: Entry;
       let reason = "Could not restore this entry. Please retry.";
       tx.oncomplete = () => {
         db.close();
+        this.changed();
         resolve(recovered);
       };
       tx.onabort = () => {
@@ -132,12 +156,14 @@ export class IndexedDBRepository implements JournalRepository {
   ): Promise<{ imported: number; skipped: number }> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction("entries", "readwrite");
+      const tx = db.transaction(["entries", "sync"], "readwrite");
+      this.dirty(tx);
       const store = tx.objectStore("entries");
       let imported = 0,
         skipped = 0;
       tx.oncomplete = () => {
         db.close();
+        this.changed();
         resolve({ imported, skipped });
       };
       tx.onabort = () => {
@@ -170,10 +196,12 @@ export class IndexedDBRepository implements JournalRepository {
   async save(entry: Entry): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction("entries", "readwrite");
+      const tx = db.transaction(["entries", "sync"], "readwrite");
+      this.dirty(tx);
       tx.objectStore("entries").put(entry);
       tx.oncomplete = () => {
         db.close();
+        this.changed();
         resolve();
       };
       tx.onabort = tx.onerror = () => {
@@ -182,5 +210,155 @@ export class IndexedDBRepository implements JournalRepository {
       };
     });
   }
+  async snapshot(): Promise<LocalSnapshot> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(["entries", "trash", "sync"], "readonly");
+      const entries = tx.objectStore("entries").getAll();
+      const trash = tx.objectStore("trash").getAll();
+      const state = tx.objectStore("sync").get("state");
+      tx.oncomplete = () => {
+        db.close();
+        resolve({
+          entries: entries.result,
+          trash: trash.result,
+          state: state.result || { generation: 0, synced: 0, revision: 0 },
+        });
+      };
+      tx.onabort = tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+  }
+  // Compare and swap prevents network responses overwriting typing in this or another tab.
+  async accept(
+    snapshot: JournalSnapshot | null,
+    revision: number,
+    generation: number,
+    archive = false,
+  ): Promise<boolean> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(["entries", "trash", "sync"], "readwrite");
+      const sync = tx.objectStore("sync");
+      const req = sync.get("state");
+      let accepted = false;
+      req.onsuccess = () => {
+        const state: SyncState = req.result || {
+          generation: 0,
+          synced: 0,
+          revision: 0,
+        };
+        if (state.generation !== generation) return;
+        accepted = true;
+        if (snapshot) {
+          if (archive) {
+            const entries = tx.objectStore("entries").getAll();
+            const trash = tx.objectStore("trash").getAll();
+            entries.onsuccess = () => {
+              for (const entry of entries.result)
+                tx.objectStore("trash").put({
+                  id: crypto.randomUUID(),
+                  deletedAt: new Date().toISOString(),
+                  entry,
+                });
+            };
+            trash.onsuccess = () => {
+              for (const item of trash.result)
+                if (!snapshot.trash.some((remote) => remote.id === item.id))
+                  tx.objectStore("trash").put(item);
+            };
+          }
+          tx.objectStore("entries").clear();
+          tx.objectStore("trash").clear();
+          for (const entry of snapshot.entries)
+            tx.objectStore("entries").put(entry);
+          for (const item of snapshot.trash) tx.objectStore("trash").put(item);
+        }
+        sync.put(
+          {
+            ...state,
+            generation: archive ? generation + 1 : generation,
+            revision,
+            synced: generation,
+          },
+          "state",
+        );
+      };
+      tx.oncomplete = () => {
+        db.close();
+        resolve(accepted);
+      };
+      tx.onabort = tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+  }
+  async archive(snapshot: JournalSnapshot): Promise<void> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(["trash", "sync"], "readwrite");
+      this.dirty(tx);
+      const trash = tx.objectStore("trash");
+      for (const entry of snapshot.entries)
+        trash.put({
+          id: crypto.randomUUID(),
+          deletedAt: new Date().toISOString(),
+          entry,
+        });
+      for (const item of snapshot.trash) {
+        const existing = trash.get(item.id);
+        existing.onsuccess = () => {
+          if (!existing.result) trash.put(item);
+        };
+      }
+      tx.oncomplete = () => {
+        db.close();
+        this.changed();
+        resolve();
+      };
+      tx.onabort = tx.onerror = () => {
+        db.close();
+        reject(
+          tx.error ||
+            new Error("Could not preserve the other journal version."),
+        );
+      };
+    });
+  }
+  async acknowledge(revision: number, sentGeneration: number) {
+    const db = await this.open();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction("sync", "readwrite");
+      const store = tx.objectStore("sync");
+      const req = store.get("state");
+      req.onsuccess = () => {
+        const state = req.result || { generation: 0, synced: 0, revision: 0 };
+        store.put({ ...state, revision, synced: sentGeneration }, "state");
+      };
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onabort = tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+  }
+}
+export interface SyncState {
+  generation: number;
+  synced: number;
+  revision: number;
+}
+export interface JournalSnapshot {
+  entries: Entry[];
+  trash: DeletedEntry[];
+}
+export interface LocalSnapshot extends JournalSnapshot {
+  state: SyncState;
 }
 export const journalRepository: JournalRepository = new IndexedDBRepository();

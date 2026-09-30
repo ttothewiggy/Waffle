@@ -1,4 +1,9 @@
 import Journal from "@/components/Journal";
+import CloudAccount from "@/components/CloudAccount";
 export default function Page() {
-  return <Journal />;
+  return (
+    <CloudAccount>
+      <Journal />
+    </CloudAccount>
+  );
 }

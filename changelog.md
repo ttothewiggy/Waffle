@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Accounts and sync — 2026-09-30 (pending live Supabase setup)
+
+- Added optional email/password accounts, email confirmation and password reset.
+- Added separate offline journal stores per account and explicit import from the original device-only journal.
+- Added Supabase cloud sync for entries, photos, captions, saved versions and Recently deleted.
+- Added durable pending-sync tracking, sync status and manual retry.
+- Added conflict detection and explicit version choice, with downloads and recovery of displaced local entries.
+- Added private, content-addressed photo storage and owner-only SQL policies with checked revisions on saves.
+- Standard sync is not end-to-end encrypted. Account deletion, permanent photo cleanup, optional encryption and wider-beta hardening remain planned.
+- Added setup instructions and automated persistence, concurrency, photo transport and SQL permission tests.
+
+
 ### Final visual refinement — 2026-09-29
 
 - Restored a dark walnut interface around a warmer parchment entry page.

@@ -1,6 +1,6 @@
 # Waffle
 
-A mobile-first, device-local journal built with Next.js, React and TypeScript.
+A mobile-first journal built with Next.js, React and TypeScript, with device-local writing and optional Supabase account sync.
 
 ## Your editable project
 
@@ -16,9 +16,9 @@ Open the deployed HTTPS URL in Android Chrome and use Install app / Add to Home 
 
 ## Data
 
-Text and photo Blobs are stored together in IndexedDB on this browser origin. Save feedback follows transaction completion. Wait for “Saved on this device” before closing. Entries are not encrypted or synced. Backups are manual: use Backup & restore under Your journal. Browser storage can be cleared or evicted. Private browsing may not retain entries. Keep an exported backup of valuable memories. Multiple simultaneous editing tabs are not supported (last write wins).
+Text and photo Blobs are stored together in IndexedDB on this browser origin. Save feedback follows transaction completion. Wait for “Saved on this device” before closing. Device-only entries are not encrypted or synced. Account sync is available after the Supabase setup below; it is not end-to-end encrypted. Backups are manual: use Backup & restore under Your journal. Browser storage can be cleared or evicted. Private browsing may not retain entries. Keep an exported backup of valuable memories. Multiple simultaneous editing tabs are not supported (last write wins).
 
-See docs/v0.1.md for scope, model, visual direction and module boundaries. See docs/v0.2.md for backup/restore and dedicated transcription setup. There is no account system, billing, encryption, cloud sync or PDF export.
+See docs/v0.1.md for scope, model, visual direction and module boundaries. See docs/v0.2.md for backup/restore and dedicated transcription setup. Accounts and cloud sync are implemented for private testing; see [cloud setup](docs/cloud-sync.md). Billing, end-to-end encryption and PDF export are not implemented.
 
 ## After moving or renaming the folder
 
@@ -47,3 +47,7 @@ The home screen is a journal overview with short previews, photo thumbnails and 
 Run `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` before publishing. Lint tooling requires Node 20.19+, 22.13+, or 24+.
 
 The final visual pass restores a walnut shell, responsive parchment frame and corner bookmark. Bottom navigation stays visible in entries; Dictate and Add photos are both available below the content. Text size can be set from 8px to 22px in the existing reading controls (16px default). Supporting browsers resize content around the keyboard.
+
+## Account sync
+
+See [Supabase setup and private-test checklist](docs/cloud-sync.md). Run the checked-in SQL migration, configure authentication URLs/email delivery and add the public environment variables before deploying. Account journals have separate device caches; copying an old journal into an account is explicit. Conflict resolution preserves both versions until the user chooses. Milestone 4 privacy hardening is not complete; the setup guide lists remaining work.

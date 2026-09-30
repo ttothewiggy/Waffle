@@ -736,3 +736,61 @@ body {
     padding-right: 30px;
   }
 }
+
+/* Account controls keep the journal's existing parchment and walnut palette. */
+.account-settings form {
+  display: grid;
+  gap: 1rem;
+  max-width: 30rem;
+}
+.account-settings label {
+  display: grid;
+  gap: 0.4rem;
+}
+.account-settings input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem;
+  font: inherit;
+  color: #30251d;
+  background: #f4ead4;
+  border: 1px solid #a58b65;
+  border-radius: 0.5rem;
+}
+.account-settings button {
+  padding: 0.7rem 1rem;
+  border: 1px solid #a58b65;
+  border-radius: 0.5rem;
+  color: inherit;
+  background: #ffffff0a;
+  cursor: pointer;
+  font: inherit;
+}
+.account-settings button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0.8rem 0;
+}
+.account-settings strong {
+  overflow-wrap: anywhere;
+}
+.sync-conflict {
+  border: 1px solid #b8945e;
+  border-radius: 0.6rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+.sync-conflict button {
+  margin: 0.25rem;
+}
+.cloud-status {
+  font-size: 0.8rem;
+  color: #cdbb9a;
+  padding: 0.4rem 0;
+  margin: 0 0 0.5rem;
+}
