@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource/kalam/latin-400.css";
+import "@fontsource/kalam/latin-700.css";
 import "./globals.css";
 import "./refinement.css";
 export const metadata: Metadata = {

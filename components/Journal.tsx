@@ -10,6 +10,9 @@ import {
   Mic,
   Undo2,
   Feather,
+  Check,
+  CloudOff,
+  LoaderCircle,
 } from "lucide-react";
 import { useJournalAccount, AccountSettings } from "./CloudAccount";
 import {
@@ -20,6 +23,7 @@ import {
   type Photo,
 } from "@/lib/storage/types";
 import WaffleIcon from "./WaffleIcon";
+import AppUpdateNotice from "./AppUpdateNotice";
 import { READING_SIZES } from "@/lib/preferences/reading";
 import JournalOverview from "./JournalOverview";
 import EntryOptions from "./EntryOptions";
@@ -36,8 +40,9 @@ import { orderedPhotos } from "@/lib/document/simple";
 import BookView from "./BookView";
 import DiaryBook from "./DiaryBook";
 import AiDialog from "./AiDialog";
-import { blocksFor, textFor, applyDraft } from "@/lib/document/blocks";
-import type { DocumentBlock } from "@/lib/storage/types";
+import { applyDraft } from "@/lib/document/blocks";
+import { appendText, fromText } from "@/lib/document/rich";
+import { pageStyle } from "./PageStyle";
 import BackupDialog from "./BackupDialog";
 import DictationDialog from "./DictationDialog";
 const parseDay = (key: string) => new Date(`${key}T12:00:00`);
@@ -121,8 +126,6 @@ export default function Journal() {
     window.addEventListener("online", online);
     window.addEventListener("offline", online);
     const midnight = window.setInterval(() => setToday(dayKey()), 30000);
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production")
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
     return () => {
       window.removeEventListener("online", online);
       window.removeEventListener("offline", online);
@@ -208,6 +211,9 @@ export default function Journal() {
     const entry = {
       ...(entriesRef.current[date] || newEntry(date)),
       ...patch,
+      ...(patch.text !== undefined && patch.richText === undefined
+        ? { richText: fromText(patch.text) }
+        : {}),
       blocks: undefined,
       updatedAt: new Date().toISOString(),
     };
@@ -325,7 +331,11 @@ export default function Journal() {
               await flush();
               return;
             }
-            if (current.text !== aiSource.text)
+            if (
+              current.text !== aiSource.text ||
+              JSON.stringify(current.richText) !==
+                JSON.stringify(aiSource.richText)
+            )
               throw new Error("The entry changed. Close and try again.");
             await flush();
             update(applyDraft(current, text), aiSource.date);
@@ -354,11 +364,7 @@ export default function Journal() {
           append={(text) => {
             const current =
               entriesRef.current[dictationDay] || newEntry(dictationDay);
-            const blocks: DocumentBlock[] = [
-              ...blocksFor(current),
-              { id: crypto.randomUUID(), type: "text", text },
-            ];
-            update({ blocks, text: textFor(blocks) }, dictationDay);
+            update(appendText(current, text), dictationDay);
           }}
         />
       )}
@@ -378,19 +384,22 @@ export default function Journal() {
           disabled={adding || undoBusy}
           size={writingSize}
           setSize={resizeWriting}
+          appearance={entry.appearance}
+          setAppearance={(appearance) => update({ appearance })}
         />
       )}
       {versionsOpen && (
         <VersionHistory
           revisions={entry.revisions || []}
           close={() => setVersionsOpen(false)}
-          restore={(text) =>
-            update(
-              applyDraft(
+          restore={(version) =>
+            update({
+              ...applyDraft(
                 entriesRef.current[selected] || newEntry(selected),
-                text,
+                version.text,
               ),
-            )
+              richText: version.richText || fromText(version.text),
+            })
           }
         />
       )}
@@ -434,7 +443,8 @@ export default function Journal() {
         </header>
       )}
       <main className="journal-main">
-        {account && (
+        <AppUpdateNotice flush={flush} />
+        {account && (view !== "write" || engine?.status !== "synced") && (
           <p className="cloud-status" role="status">
             {engine?.message ||
               "Saved account copy on this device — sign in through Settings to sync."}
@@ -466,7 +476,41 @@ export default function Journal() {
         {!ready ? (
           <p className="opening-journal">Opening your journal…</p>
         ) : view === "write" ? (
-          <article className="full-entry">
+          <article className="full-entry" style={pageStyle(entry.appearance)}>
+            <button
+              className="page-sync"
+              onClick={() => navigate("settings")}
+              title={
+                error ||
+                (status === "Saving…"
+                  ? status
+                  : account
+                    ? engine?.message || "Sign in through Settings to sync"
+                    : "Saved on this device")
+              }
+              aria-label={
+                error ||
+                (status === "Saving…"
+                  ? status
+                  : account
+                    ? engine?.message || "Sign in through Settings to sync"
+                    : "Saved on this device")
+              }
+            >
+              {error ||
+              (account &&
+                (!engine ||
+                  engine.status === "error" ||
+                  engine.status === "offline" ||
+                  engine.status === "conflict")) ? (
+                <CloudOff size={16} />
+              ) : status === "Saving…" ||
+                (account && engine?.status !== "synced") ? (
+                <LoaderCircle size={16} />
+              ) : (
+                <Check size={16} />
+              )}
+            </button>
             {reading ? (
               <BookView
                 key={selected}
@@ -478,25 +522,31 @@ export default function Journal() {
               />
             ) : (
               <DocumentEditor
+                photo={() => fileInput.current?.click()}
+                dictate={openDictation}
                 entry={entry}
                 size={writingSize}
                 disabled={undoBusy || adding}
                 onChange={update}
               />
             )}
-            <div className="entry-end-tools">
-              <button
-                disabled={adding || undoBusy}
-                onClick={() => fileInput.current?.click()}
-              >
-                <ImagePlus size={18} />
-                {adding ? "Opening photos…" : "Add photos"}
-              </button>
-              <button disabled={adding || undoBusy} onClick={openDictation}>
-                <Mic size={18} />
-                Dictate
-              </button>
-            </div>
+            {reading && (
+              <div className="entry-end-tools">
+                <button
+                  disabled={adding || undoBusy}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  <ImagePlus size={18} />
+                  <span className="sr-only">
+                    {adding ? "Opening photos…" : "Add photos"}
+                  </span>
+                </button>
+                <button disabled={adding || undoBusy} onClick={openDictation}>
+                  <Mic size={18} />
+                  <span className="sr-only">Dictate</span>
+                </button>
+              </div>
+            )}
             <input
               ref={fileInput}
               type="file"

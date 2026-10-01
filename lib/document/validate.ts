@@ -1,3 +1,4 @@
+import { validateRich } from "./rich";
 import { textFor } from "./blocks";
 import { DocumentBlock, Revision } from "../storage/types";
 function object(value: unknown): Record<string, unknown> {
@@ -45,6 +46,14 @@ export function validateRevisions(value: unknown): Revision[] {
       blocks = validateBlocks(r.blocks);
     if (textFor(blocks) !== text)
       throw new Error("Invalid revision text in backup.");
-    return { id: string(r.id, 200), at, text, blocks };
+    return {
+      id: string(r.id, 200),
+      at,
+      text,
+      blocks,
+      ...(r.richText === undefined
+        ? {}
+        : { richText: validateRich(r.richText, text) }),
+    };
   });
 }

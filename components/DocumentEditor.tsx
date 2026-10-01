@@ -1,7 +1,10 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Entry, Photo } from "@/lib/storage/types";
+import RichEditor from "./RichEditor";
+import { documentFor, plainText } from "@/lib/document/rich";
+import { DateHeading } from "./PageStyle";
 export function JournalPhoto({ photo }: { photo: Photo }) {
   const [url, setUrl] = useState("");
   useEffect(() => {
@@ -45,37 +48,30 @@ export default function DocumentEditor({
   size,
   disabled,
   onChange,
+  photo,
+  dictate,
 }: {
+  photo: () => void;
+  dictate: () => void;
   entry: Entry;
   size: number;
   disabled: boolean;
   onChange: (patch: Partial<Entry>) => void;
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const resize = () => {
-      el.style.height = "auto";
-      el.style.height = `${el.scrollHeight + 2}px`;
-    };
-    resize();
-    const observer = new ResizeObserver(resize);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [entry.text, size]);
   return (
     <div className="document-editor">
-      <textarea
-        ref={ref}
-        className="document-paragraph continuous-editor"
-        aria-label={`Journal entry for ${entry.date}`}
+      <DateHeading date={entry.date} appearance={entry.appearance} />
+      <RichEditor
+        key={entry.date}
+        doc={documentFor(entry)}
+        label={`Journal entry for ${entry.date}`}
+        size={size}
         disabled={disabled}
-        style={{ fontSize: size }}
-        value={entry.text}
-        placeholder="What would you like to waffle about today?"
-        onChange={(e) => onChange({ text: e.target.value, blocks: undefined })}
-        spellCheck
+        photo={photo}
+        dictate={dictate}
+        onChange={(richText) =>
+          onChange({ richText, text: plainText(richText), blocks: undefined })
+        }
       />
       {!!entry.photos.length && (
         <section className="end-photos" aria-label="Photos and captions">

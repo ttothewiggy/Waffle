@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### PDF books and app update recovery — 2026-10-01
+
+- Added private, on-device PDF book export with A5 portrait as the default and an A4 option.
+- Added date ranges, cover title/subtitle, page numbers, print text size, fonts, page colours and optional unwritten days.
+- Included formatted text, photos and captions; added an actual PDF preview with facing pages on wide screens and single pages on phones.
+- Kept PDF generation cancellable and separate from JSON backup and restore.
+- Added locally bundled licensed fonts and emoji rendering without an external export service.
+- Diagnosed the cross-device sync interruption as a version mismatch: the old deployed app accepts cloud format 1 while the formatting build writes format 2. The new build reads both and must be deployed to resume syncing on old devices.
+- Added clearer newer-version sync instructions and a waiting-update notice that saves locally before reloading.
+- Added automated PDF bounds/content tests and cloud-format compatibility tests. Validation: 57 tests, lint, TypeScript and production build passed; browser export, download and mobile/desktop preview checks passed.
+
+
+### Formatted journal pages — 2026-09-30
+
+- Added a compact icon toolbar for photos, dictation, bold, italic, underline, H1 and H2.
+- Kept body sizes from 8–22px; H1 follows at +4px and H2 at +2px.
+- Added a typeset date heading, with hide and underline options, without inserting it into the entry’s text.
+- Added per-entry serif, sans and handwritten fonts, plus parchment, ivory, pale blue, sage and warm grey page colours.
+- Preserved formatting in the editable book view, local saves, cloud sync, backups and restored AI versions.
+- Kept existing formatting when dictation adds words; AI drafts start as plain text with the formatted original retained.
+- Replaced the persistent synced sentence inside entries with a small indicator beside the bookmark; pending and error messages remain visible.
+- Added backup version 3 and cloud manifest version 2, with support for reading older data. No database migration is needed; refresh other devices after deployment before editing.
+- Added rich-text validation, pagination and editor-lifecycle regression tests. Validation: 53 tests, lint, TypeScript and production build passed; mobile browser checks covered formatted page edits, reopening, themes, date visibility and 8px text. PDF export remains planned.
+
+
 ### Sync recovery — 2026-09-30
 
 - Added request timeouts, including stalled response downloads: 30 seconds for ordinary requests and two minutes for photo transfers.

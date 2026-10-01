@@ -11,20 +11,33 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fontsource/kalam": "^5.3.0",
+    "@fontsource/libre-baskerville": "^5.3.0",
+    "@fontsource/noto-sans": "^5.3.0",
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/supabase-js": "^2.109.0",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "emoji-regex-xs": "^2.0.1",
     "lucide-react": "^0.468.0",
     "next": "^16.3.6",
+    "pdfjs-dist": "5.5.207",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@napi-rs/canvas": "^1.0.9",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@typescript-eslint/parser": "^8.70.1",
+    "esbuild": "^0.28.2",
     "eslint": "^10.11.0",
     "fake-indexeddb": "^6.0.0",
+    "jsdom": "^26.1.0",
     "serve": "^14.2.6",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"

@@ -1,3 +1,4 @@
+import { validateRich, validateAppearance } from "../document/rich";
 import { validateBlocks, validateRevisions } from "../document/validate";
 import { textFor } from "../document/blocks";
 import { Entry, hasContent } from "../storage/types";
@@ -57,7 +58,7 @@ export async function encodeBackup(entries: Entry[]): Promise<Blob> {
     [
       JSON.stringify({
         format: "waffle-backup",
-        version: 2,
+        version: 3,
         exportedAt: new Date().toISOString(),
         entries: rows,
       }),
@@ -79,7 +80,7 @@ export async function decodeBackup(file: Blob): Promise<Entry[]> {
   }
   if (
     input.format !== "waffle-backup" ||
-    (input.version !== 1 && input.version !== 2) ||
+    (input.version !== 1 && input.version !== 2 && input.version !== 3) ||
     !Array.isArray(input.entries) ||
     input.entries.length > 50000
   )
@@ -140,6 +141,12 @@ export async function decodeBackup(file: Blob): Promise<Entry[]> {
     return {
       date,
       text,
+      ...(e.richText === undefined
+        ? {}
+        : { richText: validateRich(e.richText, text) }),
+      ...(e.appearance === undefined
+        ? {}
+        : { appearance: validateAppearance(e.appearance) }),
       ...(blocks ? { blocks } : {}),
       ...(revisions ? { revisions } : {}),
       createdAt: timestamp(e.createdAt),

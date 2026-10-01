@@ -1,9 +1,23 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Entry } from "@/lib/storage/types";
-import { paginate } from "@/lib/document/paginate";
-import { editPage } from "@/lib/document/simple";
+import {
+  paginateRich,
+  joinRichPages,
+  replaceRichPage,
+  renderMeasure,
+  type RichPage,
+} from "@/lib/document/rich-pages";
+import { documentFor, plainText } from "@/lib/document/rich";
+import RichEditor from "./RichEditor";
+import { pageStyle, DateHeading } from "./PageStyle";
 import { JournalPhoto, PhotoCaption } from "./DocumentEditor";
 export default function BookView({
   entry,
@@ -30,7 +44,11 @@ export default function BookView({
     measure = useRef<HTMLDivElement>(null);
   const editing = useRef(false);
   const [revision, setRevision] = useState(0);
-  const [layout, setLayout] = useState({ texts: [""], spread: 1, height: 400 });
+  const [layout, setLayout] = useState({
+    pages: [{ doc: documentFor(entry), continues: false }] as RichPage[],
+    spread: 1,
+    height: 400,
+  });
   const [position, setPosition] = useState(
     initialLastPage ? Number.MAX_SAFE_INTEGER : 0,
   );
@@ -49,23 +67,12 @@ export default function BookView({
       const pageWidth = (width - (spread === 2 ? 16 : 0)) / spread;
       const height = Math.max(280, Math.min(600, window.innerHeight - 310));
       probe.style.width = `${pageWidth - 50}px`;
-      probe.style.fontSize = `${size}px`;
-      const pages = paginate(
-        [{ id: "body", type: "text", text: entry.text }],
-        (blocks) => {
-          probe.textContent =
-            blocks.map((b) => (b.type === "text" ? b.text : "")).join("") +
-            "\u200b";
-          return probe.scrollHeight <= height - 8;
-        },
-      );
-      setLayout({
-        texts: pages.map((page) =>
-          page.map((b) => (b.type === "text" ? b.text : "")).join(""),
-        ),
-        spread,
-        height,
+      probe.style.setProperty("--reading-size", `${size}px`);
+      const pages = paginateRich(documentFor(entry), (doc) => {
+        renderMeasure(probe, doc);
+        return probe.scrollHeight <= height - 8;
       });
+      setLayout({ pages, spread, height });
     };
     calculate();
     const observer = new ResizeObserver(calculate);
@@ -77,8 +84,8 @@ export default function BookView({
       observer.disconnect();
       window.removeEventListener("resize", calculate);
     };
-  }, [entry.text, size, revision]);
-  const count = layout.texts.length + entry.photos.length;
+  }, [entry.text, entry.richText, entry.appearance, size, revision]);
+  const count = layout.pages.length + entry.photos.length;
   const start = Math.min(
     Math.floor(position / layout.spread) * layout.spread,
     Math.floor((count - 1) / layout.spread) * layout.spread,
@@ -88,10 +95,19 @@ export default function BookView({
     setRevision((v) => v + 1);
   }
   return (
-    <div className="book-view" ref={container}>
+    <div
+      className="book-view"
+      ref={container}
+      style={
+        {
+          ...pageStyle(entry.appearance),
+          "--reading-size": `${size}px`,
+        } as CSSProperties
+      }
+    >
       <div
         ref={measure}
-        className="book-content book-measure book-text-measure"
+        className="rich-content book-measure rich-measure"
         aria-hidden="true"
       />
       <div
@@ -104,7 +120,7 @@ export default function BookView({
           { length: Math.min(layout.spread, count - start) },
           (_, i) => {
             const index = start + i,
-              photo = entry.photos[index - layout.texts.length];
+              photo = entry.photos[index - layout.pages.length];
             return (
               <article
                 className="book-page"
@@ -134,30 +150,36 @@ export default function BookView({
                     />
                   </div>
                 ) : (
-                  <textarea
-                    className="book-page-editor"
-                    aria-label={`Edit page ${index + 1}`}
-                    style={{ fontSize: size, height: layout.height }}
-                    value={layout.texts[index]}
-                    disabled={disabled}
-                    placeholder={diary ? "" : "Your story starts here…"}
-                    spellCheck
-                    onFocus={() => {
-                      editing.current = true;
-                    }}
-                    onBlur={finish}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const text = editPage(layout.texts, index, value);
-                      setLayout((current) => ({
-                        ...current,
-                        texts: current.texts.map((t, n) =>
-                          n === index ? value : t,
-                        ),
-                      }));
-                      onChange({ text, blocks: undefined });
-                    }}
-                  />
+                  <>
+                    {index === 0 && (
+                      <DateHeading
+                        date={entry.date}
+                        appearance={entry.appearance}
+                      />
+                    )}
+                    <RichEditor
+                      doc={layout.pages[index].doc}
+                      label={`Edit page ${index + 1}`}
+                      size={size}
+                      disabled={disabled}
+                      pageHeight={layout.height}
+                      placeholder={diary ? "" : "Your story starts here…"}
+                      onFocus={() => {
+                        editing.current = true;
+                      }}
+                      onBlur={finish}
+                      onChange={(doc) => {
+                        const pages = replaceRichPage(layout.pages, index, doc);
+                        const richText = joinRichPages(pages);
+                        setLayout((current) => ({ ...current, pages }));
+                        onChange({
+                          richText,
+                          text: plainText(richText),
+                          blocks: undefined,
+                        });
+                      }}
+                    />
+                  </>
                 )}
                 <footer>{index + 1}</footer>
               </article>

@@ -7,3 +7,7 @@ out/
 
 !/.env.example
 /public/sw.js
+
+# Generated PDF previews and visual QA artifacts
+/tmp/pdfs/
+/output/pdf/

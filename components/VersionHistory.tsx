@@ -9,7 +9,7 @@ export default function VersionHistory({
 }: {
   revisions: Revision[];
   close: () => void;
-  restore: (text: string) => void;
+  restore: (revision: Revision) => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function VersionHistory({
                   "Restore this text? Your current words will also be kept.",
                 )
               ) {
-                restore(revision.text);
+                restore(revision);
                 close();
               }
             }}

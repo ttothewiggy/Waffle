@@ -1,23 +1,18 @@
+import { fromText } from "./rich";
 import { DocumentBlock, Entry } from "../storage/types";
 export function blocksFor(entry: Entry): DocumentBlock[] {
   if (entry.blocks) return entry.blocks;
   return [
-    ...entry.text
-      .split(/\n\n/)
-      .map(
-        (text, i): DocumentBlock => ({
-          id: `legacy-text-${i}`,
-          type: "text",
-          text,
-        }),
-      ),
-    ...entry.photos.map(
-      (p): DocumentBlock => ({
-        id: `photo-${p.id}`,
-        type: "photo",
-        photoId: p.id,
-      }),
-    ),
+    ...entry.text.split(/\n\n/).map((text, i): DocumentBlock => ({
+      id: `legacy-text-${i}`,
+      type: "text",
+      text,
+    })),
+    ...entry.photos.map((p): DocumentBlock => ({
+      id: `photo-${p.id}`,
+      type: "photo",
+      photoId: p.id,
+    })),
   ];
 }
 export function textFor(blocks: DocumentBlock[]): string {
@@ -52,12 +47,14 @@ export function applyDraft(entry: Entry, text: string): Partial<Entry> {
   return {
     text,
     blocks: replaceText(entry, text),
+    richText: fromText(text),
     revisions: [
       ...(entry.revisions || []),
       {
         id: crypto.randomUUID(),
         at: new Date().toISOString(),
         text: entry.text,
+        ...(entry.richText ? { richText: entry.richText } : {}),
         blocks: blocksFor(entry),
       },
     ],

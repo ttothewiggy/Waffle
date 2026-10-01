@@ -216,11 +216,11 @@ test("pagination preserves every character and photo across page turns including
   assert.equal(pages.flat().filter((b) => b.type === "photo").length, 1);
 });
 
-test("v1 backups remain readable and v2 exports identify the new document format", async () => {
+test("v1 backups remain readable and v3 exports identify the formatted document format", async () => {
   const entry = { ...newEntry("2026-09-24"), text: "An older journal." };
   const blob = await encodeBackup([entry]);
   const raw = JSON.parse(await blob.text());
-  assert.equal(raw.version, 2);
+  assert.equal(raw.version, 3);
   raw.version = 1;
   assert.equal(
     (await decodeBackup(new Blob([JSON.stringify(raw)])))[0].text,

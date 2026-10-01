@@ -94,3 +94,11 @@ Messages distinguish expired sign-in, access denial, missing setup or files, rat
 A timeout does not prove a server write failed. If the cloud saved successfully but its response was lost, the next attempt may ask you to resolve a conflict. Waffle deliberately retains both copies rather than overwriting blindly.
 
 Live account creation, cross-device syncing and backup imports have been reported working. Overlap/conflict testing is still in progress.
+
+## Formatting edition rollout (2026-10-01)
+
+The first formatting edition writes cloud manifest version 2. The previously deployed app accepts only version 1, so using the formatting build locally against the same account can make the older deployed app pause syncing. This is an app-version mismatch, not a missing SQL migration. Do not change the manifest version back to 1: old clients would be able to overwrite and strip rich text.
+
+The current build reads both versions. Deploy it before using formatting across devices, then close/reopen or update Waffle on each device online. Keep a JSON backup from each device with unsynced changes. In Settings, use Sync now; if both copies changed, review the preserved versions before choosing. Do not clear browser storage to address this error.
+
+The app now notices waiting service-worker updates and offers Update Waffle. It flushes local writes before activating and reloading; a failed save blocks the update. Older installed builds may require closing all Waffle windows and reopening online once after deployment because they do not yet contain this notice. The cloud reader reports newer unsupported formats with explicit update instructions.

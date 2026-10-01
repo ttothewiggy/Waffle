@@ -1,8 +1,10 @@
 "use client";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Download, Upload, BookOpen, Undo2 } from "lucide-react";
 import { useJournalAccount } from "./CloudAccount";
 import type { DeletedEntry } from "@/lib/storage/types";
+const PdfExport = dynamic(() => import("./PdfExport"), { ssr: false });
 export default function ExportLibrary({
   count,
   photos,
@@ -21,6 +23,7 @@ export default function ExportLibrary({
     revision,
     account,
   } = useJournalAccount();
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [deleted, setDeleted] = useState<DeletedEntry[]>([]),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
@@ -57,6 +60,13 @@ export default function ExportLibrary({
   }
   return (
     <section className="export-view">
+      {pdfOpen && (
+        <PdfExport
+          key={account?.id || "local"}
+          close={() => setPdfOpen(false)}
+          flush={flush}
+        />
+      )}
       <h1>Export & backup</h1>
       <p className="export-intro">
         {count} {count === 1 ? "entry" : "entries"} · {photos}{" "}
@@ -84,13 +94,19 @@ export default function ExportLibrary({
       </section>
       <section className="data-card pdf-card">
         <BookOpen size={22} />
-        <h2>
-          Export journal as PDF <span>Planned</span>
-        </h2>
+        <h2>Your journal, as a book</h2>
         <p>
-          A readable edition to keep, share privately or print. PDF export isn’t
-          available yet; your JSON backup remains separate.
+          Create an A5 or A4 PDF with a cover, your formatted words, photos and
+          captions. Include unwritten days, or keep only the days you wrote.
         </p>
+        <button
+          className="primary"
+          disabled={busy}
+          onClick={() => setPdfOpen(true)}
+        >
+          <BookOpen size={18} />
+          Make a PDF book
+        </button>
       </section>
       <section className="deleted-section" aria-labelledby="deleted-title">
         <h2 id="deleted-title">Recently deleted</h2>

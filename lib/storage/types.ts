@@ -1,3 +1,4 @@
+import type { RichDocument, Appearance } from "../document/rich";
 export type DocumentBlock =
   | { id: string; type: "text"; text: string }
   | { id: string; type: "photo"; photoId: string };
@@ -5,6 +6,7 @@ export interface Revision {
   id: string;
   at: string;
   text: string;
+  richText?: RichDocument;
   blocks: DocumentBlock[];
 }
 export interface Photo {
@@ -17,7 +19,9 @@ export interface Photo {
 export interface Entry {
   date: string;
   text: string;
+  richText?: RichDocument;
   photos: Photo[];
+  appearance?: Appearance;
   blocks?: DocumentBlock[];
   revisions?: Revision[];
   createdAt: string;

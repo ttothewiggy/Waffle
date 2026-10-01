@@ -85,7 +85,8 @@ export default function AiDialog({
       <p>
         Choose how much help you’d like. Creating a draft sends this day’s text
         to OpenAI. Photos and other days stay here. Your original is kept when
-        you apply a draft.
+        you apply a draft, including its formatting. The new draft starts as
+        plain text; you can format it afterwards.
       </p>
       {!draft ? (
         <>

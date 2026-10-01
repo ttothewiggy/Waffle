@@ -1,4 +1,9 @@
 "use client";
+import {
+  defaultAppearance,
+  papers,
+  type Appearance,
+} from "@/lib/document/rich";
 import { READING_SIZES } from "@/lib/preferences/reading";
 import { useEffect, useRef } from "react";
 import {
@@ -11,6 +16,8 @@ import {
   Trash2,
 } from "lucide-react";
 export default function EntryOptions({
+  appearance = defaultAppearance,
+  setAppearance,
   close,
   photo,
   dictate,
@@ -26,6 +33,8 @@ export default function EntryOptions({
   size,
   setSize,
 }: {
+  appearance?: Appearance;
+  setAppearance: (appearance: Appearance) => void;
   close: () => void;
   photo: () => void;
   dictate: () => void;
@@ -103,6 +112,67 @@ export default function EntryOptions({
           ))}
         </select>
       </label>
+      <fieldset className="page-options" disabled={disabled}>
+        <legend>This page’s style</legend>
+        <label>
+          Font family
+          <select
+            value={appearance.font}
+            onChange={(e) =>
+              setAppearance({
+                ...appearance,
+                font: e.target.value as Appearance["font"],
+              })
+            }
+          >
+            <option value="serif">Classic serif</option>
+            <option value="sans">Simple sans</option>
+            <option value="handwritten">Handwritten</option>
+          </select>
+        </label>
+        <label>
+          Page colour
+          <select
+            value={appearance.paper}
+            onChange={(e) =>
+              setAppearance({
+                ...appearance,
+                paper: e.target.value as Appearance["paper"],
+              })
+            }
+          >
+            {Object.entries(papers).map(([key, value]) => (
+              <option key={key} value={key}>
+                {value.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="check-option">
+          <input
+            type="checkbox"
+            checked={appearance.showDate}
+            onChange={(e) =>
+              setAppearance({ ...appearance, showDate: e.target.checked })
+            }
+          />{" "}
+          Show date on page
+        </label>
+        <label className="check-option">
+          <input
+            type="checkbox"
+            checked={appearance.dateUnderline}
+            onChange={(e) =>
+              setAppearance({ ...appearance, dateUnderline: e.target.checked })
+            }
+          />{" "}
+          Underline date
+        </label>
+        <p>
+          Headings follow your text size: H1 +4px, H2 +2px. Font and colour are
+          saved with this entry.
+        </p>
+      </fieldset>
       <button
         className="entry-delete"
         disabled={!canDelete || disabled}

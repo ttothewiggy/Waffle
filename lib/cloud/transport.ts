@@ -6,7 +6,7 @@ import { decodeBackup } from "../backup/format";
 export type CloudPhoto = Omit<Photo, "blob"> & { path: string };
 export type CloudEntry = Omit<Entry, "photos"> & { photos: CloudPhoto[] };
 export interface Manifest {
-  version: 1;
+  version: 1 | 2;
   entries: CloudEntry[];
   trash: { id: string; deletedAt: string; entry: CloudEntry }[];
 }
@@ -61,13 +61,14 @@ export class SupabaseTransport implements CloudTransport {
     if (!data) return null;
     const m = data.manifest as Manifest;
     if (
-      m.version !== 1 ||
+      !m ||
+      (m.version !== 1 && m.version !== 2) ||
       !Array.isArray(m.entries) ||
       !Array.isArray(m.trash) ||
       !Number.isSafeInteger(data.revision)
     )
       throw new CloudProblem(
-        "This cloud journal needs a newer version of Waffle. Your device copy has not been changed.",
+        "A newer Waffle app saved this journal. Update Waffle on this device, or close all Waffle windows and reopen it online. Your device copy has not been changed.",
       );
     return { revision: data.revision, manifest: m };
   }
@@ -99,7 +100,7 @@ export class SupabaseTransport implements CloudTransport {
     for (const entry of snapshot.entries) entries.push(await convert(entry));
     for (const item of snapshot.trash)
       trash.push({ ...item, entry: await convert(item.entry) });
-    const manifest: Manifest = { version: 1, entries, trash };
+    const manifest: Manifest = { version: 2, entries, trash };
     if (new Blob([JSON.stringify(manifest)]).size > 10 * 1024 * 1024)
       throw new CloudProblem(
         "This journal exceeds the current cloud text limit. Your device copy is safe; export a backup.",
@@ -113,7 +114,7 @@ export class SupabaseTransport implements CloudTransport {
         new Blob([
           JSON.stringify({
             format: "waffle-backup",
-            version: 2,
+            version: 3,
             entries: [
               {
                 ...raw,
