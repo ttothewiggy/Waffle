@@ -85,7 +85,7 @@ test("offline changes survive reopen and sync text, photos, captions and deletio
   await first.sync();
   assert.equal((await a.list())[0].text, entry.text);
 });
-test("conflicting devices preserve both copies until an explicit choice; cloud choice keeps displaced entries in trash", async () => {
+test("overlapping passages preserve both copies until an explicit choice; choosing the other passage retains displaced writing", async () => {
   const a = repo(),
     b = repo(),
     remote = new Remote();
@@ -102,8 +102,7 @@ test("conflicting devices preserve both copies until an explicit choice; cloud c
   assert.equal(second.status, "conflict");
   assert.equal((await b.list())[0].text, "computer");
   assert.equal(remote.value!.manifest.entries[0].text, "phone");
-  await second.cloudCopy();
-  await second.useCloud();
+  await second.resolve(second.reviews[0].id, "remote");
   assert.equal((await b.list())[0].text, "phone");
   assert.ok(
     (await b.listDeleted()).some((item) => item.entry.text === "computer"),
@@ -153,7 +152,7 @@ test("account stores stay separate and importing does not replace existing accou
   assert.equal((await local.list())[0].text, "local");
   assert.deepEqual(await other.list(), []);
 });
-test("choosing this device still refuses to overwrite a newer cloud revision", async () => {
+test("an outdated passage choice refuses to overwrite a newer cloud revision", async () => {
   const a = repo(),
     b = repo(),
     remote = new Remote();
@@ -167,11 +166,11 @@ test("choosing this device still refuses to overwrite a newer cloud revision", a
   await one.sync();
   await b.save({ ...entry, text: "local" });
   await two.sync();
-  await two.cloudCopy();
+  const reviewed = two.reviews[0].id;
   await a.save({ ...entry, text: "three" });
   await one.sync();
-  await two.sync(); // A background poll must not change the revision the user reviewed.
-  await assert.rejects(two.useLocal(), SyncConflict);
+  await two.sync(); // A background poll invalidates choices for a changed passage.
+  await assert.rejects(two.resolve(reviewed, "local"), /passage changed/);
   assert.equal(remote.value!.manifest.entries[0].text, "three");
 });
 
@@ -196,7 +195,7 @@ test("offline account pointer only restores a valid local identity and strips un
   assert.equal(parseOfflineAccount(null), null);
 });
 
-test("choosing this device preserves displaced cloud writing and cloud trash", async () => {
+test("keeping this passage preserves displaced synced writing", async () => {
   const a = repo(),
     b = repo(),
     remote = new Remote();
@@ -210,8 +209,7 @@ test("choosing this device preserves displaced cloud writing and cloud trash", a
   await first.sync();
   await b.save({ ...entry, text: "device version" });
   await second.sync();
-  await second.cloudCopy();
-  await second.useLocal();
+  await second.resolve(second.reviews[0].id, "local");
   assert.equal(remote.value!.manifest.entries[0].text, "device version");
   assert.ok(
     remote.value!.manifest.trash.some(
@@ -236,7 +234,8 @@ test("an uncertain timed-out save retains local changes and never blindly overwr
   assert.equal((await local.snapshot()).state.synced, 0);
   assert.equal((await local.list())[0].text, "Keep these words");
   await sync.sync();
-  assert.equal(sync.status, "conflict");
-  assert.equal(remote.value!.revision, 1);
+  // The retry recognises identical contents instead of forcing a whole-journal choice.
+  assert.equal(sync.status, "synced");
+  assert.equal(remote.value!.revision, 2);
   assert.equal(remote.value!.manifest.entries[0].text, "Keep these words");
 });

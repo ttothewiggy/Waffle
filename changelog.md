@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+### AI for registered accounts — 2026-10-04
+
+- Enabled dictation and AI polishing for every confirmed, non-anonymous account, including future signups. Removed the owner-maintained account approval list.
+- Kept server-side session verification and rejected signed-out, expired, anonymous and unconfirmed identities.
+- Signup notification delivery remains a separate setup task; this change does not send email.
+
+
+### Account AI access and recording recovery — 2026-10-03
+
+- Replaced manually entered dictation/polishing codes with verified Supabase sessions and an owner-managed server-side list of approved user IDs. No public signup automatically grants paid AI access.
+- Added account access checks to both provider endpoints and removed the old-code fallback. Existing models remain unchanged.
+- Raised the recording timer to ten minutes with compressed mono speech and a separate safe upload-size guard.
+- Added screen wake-lock requests, clear interruption messages, partial-audio preservation, local draft recovery and audio downloads.
+- Kept audio on the device until the transcript is saved or the draft discarded; recording drafts stay separate from cloud sync and journal exports.
+- Added rollout instructions and tests for account approval, expired/missing identity, provider isolation, screen hiding, microphone errors, wake-lock denial, time/size stops and account-scoped recovery.
+- Validation in an isolated copy: 89 automated tests, lint, TypeScript, production build and offline shell generation passed. Samsung/Pixel hardware and live API checks remain necessary after configuration and deployment.
+
+
+### Offline editing and simpler sync review — 2026-10-01
+
+- Retained the last successful sync on each device so new days, one-sided corrections and independent edits can combine automatically after time offline.
+- Added three-way comparison for paragraphs, words/formatting, photos/captions, page settings and deletion-versus-edit, with bounded work for large passages.
+- Replaced whole-journal cloud/device choices and compulsory downloads with links to affected days and labelled, coloured review cards inside entries.
+- Added Keep this, Keep other and Keep both for competing passages; choices survive reopening and are invalidated if the reviewed content changes.
+- Preserved divergent originals in Recently deleted; retained compare-and-swap protection against typing and concurrent cloud writes.
+- Added automatic retry for cloud save races. No database migration or cloud-format change required.
+- Existing devices need one successful sync to establish the baseline; already-divergent old copies may need an initial day-level review. Uploads wait until outstanding choices are finished.
+- Tested a 100-day offline correction batch, additions in both reconnect orders, rich text, photos, deleted entries, stale choices, reopening and upload races. Validation: 78 automated tests passed; lint, TypeScript and production build passed. An isolated browser check verified mobile/desktop review cards and completing choices to resume sync. Live Supabase/device validation remains a post-deployment check.
+
+
 ### PDF books and app update recovery — 2026-10-01
 
 - Added private, on-device PDF book export with A5 portrait as the default and an A4 option.

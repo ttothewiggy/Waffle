@@ -26,7 +26,7 @@ Stop the development server before moving the project. If it was moved while run
 
 ## Dictation setup
 
-See [v0.2 setup](docs/v0.2.md). Add server-only `OPENAI_API_KEY` and `WAFFLE_DICTATION_TOKEN` in Vercel and redeploy. The private access code must be at least 24 characters. Never enter the API key in the app. Live transcription uses OpenAI and requires a network connection.
+See [account AI and recording setup](docs/account-ai-and-recording.md). Keep the server-only `OPENAI_API_KEY` and existing Supabase settings, then redeploy. All signed-in users with confirmed emails can transcribe without typing a private code. Recordings target ten minutes, keep a size guard and request a screen wake lock; unfinished audio is recoverable on the same device. Live transcription needs an internet connection.
 
 ## Everyday journal controls
 
@@ -36,7 +36,7 @@ Export & backup now has its own navigation item. Delete day moves an entry and i
 
 The **Write** view is one continuous text editor, followed by photos with optional captions (up to 500 characters). **Book** has editable text pages and photo pages at the end. Text saves while typing; page boundaries stay steady while focused and reflow when you leave the field. Page count responds to screen width and writing size. PDF export is still planned.
 
-**Polish with AI** offers Light tidy, Improve flow and Rewrite. Use the same private code as dictation. Review the draft before applying; **Before AI editing** below the document lets you inspect/restore saved originals. The existing `OPENAI_API_KEY` and `WAFFLE_DICTATION_TOKEN` power both routes—no new key is required. Restart the local server after changing environment variables; redeploy Vercel after pushing these changes. Only the selected day's text is sent for polishing, and only on request. No live journal content is used by automated tests.
+**Polish with AI** offers Light tidy, Improve flow and Rewrite. Use your confirmed, signed-in account, as for dictation. Review the draft before applying; **Before AI editing** below the document lets you inspect/restore saved originals. The existing `OPENAI_API_KEY` powers both routes; No user-ID approval list is needed; future confirmed accounts can use AI automatically. No new OpenAI key is required. Restart the local server after changing environment variables; redeploy Vercel after pushing these changes. Only the selected day's text is sent for polishing, and only on request. No live journal content is used by automated tests.
 
 Backups include inline layouts and original versions (format v2); older v1 backups remain importable.
 

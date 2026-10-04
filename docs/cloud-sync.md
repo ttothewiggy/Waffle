@@ -56,7 +56,21 @@ Local writes and their pending-sync marker share one IndexedDB transaction. Work
 
 The first implementation syncs a complete text manifest, with separately stored content-addressed photos. Existing photos are not re-uploaded for text edits. Cloud manifests are versioned and capped at 10 MB. This is intentionally a small-journal implementation; incremental per-entry syncing is a later efficiency improvement.
 
-Concurrent device edits produce a conflict, including edits to different days. Neither copy is silently replaced. Download and review both versions in Settings; browsers may ask permission for multiple downloads. Then choose a version. Choosing this device checks the cloud revision again. Either choice preserves displaced entries in Recently deleted, which also syncs. JSON exports contain active entries only, not Recently deleted.
+Waffle retains the last acknowledged journal as a local merge baseline. When both devices have changes, it compares each against that shared version:
+
+- Different days, one-sided edits/deletions and independent photo additions combine automatically.
+- Separate paragraphs and non-overlapping words in the same paragraph combine while retaining formatting.
+- Independent additions at the same paragraph boundary are both kept, with the already-synced addition first. Device clocks never decide which writing is discarded.
+- Competing changes to the same words, photo/caption, page setting or photo order, and deletion-versus-edit need a choice.
+- Review links open the affected entry. Labelled, coloured cards offer Keep this version, Keep other version and, for competing text additions, Keep both. Timestamps describe the entry's last edit, not an invented paragraph creation time.
+- Choices persist locally across reopening. If reviewed content changes on either side, stale choices are ignored and the current versions are shown again.
+- Original divergent entries are retained in Recently deleted when merging finishes. JSON exports contain active entries only, not Recently deleted.
+
+This first merge implementation keeps pending journal changes local until all overlapping choices are finished. It does not yet upload independent days while an unresolved passage remains. Background sync continues checking for updates; no per-change approval is required for edits made on only one device. Very large or structurally ambiguous overlapping rewrites may need passage-level review instead of automatic combination. Paragraph matching uses the shared document and a bounded diff, without adding a new cloud schema or claiming real-time collaborative editing.
+
+The baseline, merged local document and pending marker are stored atomically. An upload acknowledges exactly the snapshot sent, so newer typing remains pending. Concurrent cloud writes are re-read and retried up to twice before the regular background retry. The baseline adds a local snapshot (including photos); browser storage limits still apply.
+
+**Rollout:** no SQL migration or cloud-format bump. Update every device online before the next offline trip and allow one successful sync to establish its baseline. An older installation already containing divergent unsynced edits has no common starting point: overlapping dates may need one initial day-level choice, while unique dates are retained automatically. Never clear storage to work around a conflict.
 
 Use one editing tab per device. Web Locks serialize network sync in supported browsers, but simultaneous typing in two tabs is not supported.
 
@@ -66,7 +80,7 @@ Use one editing tab per device. Web Locks serialize network sync in supported br
 - Copy the old phone journal; verify text, photo bytes, captions and AI versions on computer.
 - Edit on each device in turn and wait for synced status.
 - Make an offline edit, close/reopen, reconnect and verify the other device.
-- Edit the same day on both devices offline. Verify conflict recovery and both downloads.
+- Edit the same day on both devices offline: independent additions should combine; competing words should show review cards inside that entry. Close/reopen between choices and verify both originals in Recently deleted.
 - Delete on one device, recover through Recently deleted on the other.
 - Test password reset through the real email provider.
 - Sign out and sign into a second test account; confirm no journal leakage.
@@ -91,7 +105,7 @@ Cloud requests now have deadlines covering both response headers and the full re
 
 Messages distinguish expired sign-in, access denial, missing setup or files, rate limiting, oversized uploads, service outages and timeouts. Raw provider errors are not shown in the journal sync status.
 
-A timeout does not prove a server write failed. If the cloud saved successfully but its response was lost, the next attempt may ask you to resolve a conflict. Waffle deliberately retains both copies rather than overwriting blindly.
+A timeout does not prove a server write failed. If the cloud saved successfully but its response was lost, the next attempt compares the contents and combines or recognises matching copies. A genuinely competing edit still requires review.
 
 Live account creation, cross-device syncing and backup imports have been reported working. Overlap/conflict testing is still in progress.
 
@@ -99,6 +113,6 @@ Live account creation, cross-device syncing and backup imports have been reporte
 
 The first formatting edition writes cloud manifest version 2. The previously deployed app accepts only version 1, so using the formatting build locally against the same account can make the older deployed app pause syncing. This is an app-version mismatch, not a missing SQL migration. Do not change the manifest version back to 1: old clients would be able to overwrite and strip rich text.
 
-The current build reads both versions. Deploy it before using formatting across devices, then close/reopen or update Waffle on each device online. Keep a JSON backup from each device with unsynced changes. In Settings, use Sync now; if both copies changed, review the preserved versions before choosing. Do not clear browser storage to address this error.
+The current build reads both versions. Deploy it before using formatting across devices, then close/reopen or update Waffle on each device online. Keep a JSON backup from each device with unsynced changes. In Settings, use Sync now; if changes overlap, follow the review links to the affected entries. Do not clear browser storage to address this error.
 
 The app now notices waiting service-worker updates and offers Update Waffle. It flushes local writes before activating and reloading; a failed save blocks the update. Older installed builds may require closing all Waffle windows and reopening online once after deployment because they do not yet contain this notice. The cloud reader reports newer unsupported formats with explicit update instructions.

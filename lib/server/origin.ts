@@ -3,7 +3,7 @@
  */
 export function sameOrigin(request: Request): boolean {
   const raw = request.headers.get("origin");
-  if (!raw) return true; // Non-browser clients still require the private token.
+  if (!raw) return true; // Non-browser clients still require the verified account session.
   try {
     const origin = new URL(raw);
     const url = new URL(request.url);

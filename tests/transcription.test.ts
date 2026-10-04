@@ -1,13 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  transcribeRequest,
+  transcribeRequest as rawTranscribe,
   MAX_AUDIO_BYTES,
 } from "../lib/transcription/server";
-const env = {
-  apiKey: "test-only-key",
-  accessCode: "a-private-test-code-at-least-24-characters",
-};
+import { aiEnv as env, authFetch, sessionToken } from "./ai-fixture";
+const transcribeRequest = (...args: Parameters<typeof rawTranscribe>) => rawTranscribe(args[0], args[1], args[2], authFetch);
 function request(
   options: {
     code?: string;
@@ -27,13 +25,13 @@ function request(
   return new Request("https://waffle.test/api/transcribe", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${options.code || env.accessCode}`,
+      Authorization: `Bearer ${options.code || sessionToken}`,
       Origin: options.origin || "https://waffle.test",
     },
     body: data,
   });
 }
-test("missing configuration and bad access code fail before any provider request", async () => {
+test("missing configuration and invalid sessions fail before any provider request", async () => {
   const never = async () => {
     throw new Error("Must not call provider");
   };

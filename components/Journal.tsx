@@ -23,6 +23,7 @@ import {
   type Photo,
 } from "@/lib/storage/types";
 import WaffleIcon from "./WaffleIcon";
+import SyncReview from "./SyncReview";
 import AppUpdateNotice from "./AppUpdateNotice";
 import { READING_SIZES } from "@/lib/preferences/reading";
 import JournalOverview from "./JournalOverview";
@@ -86,7 +87,8 @@ export default function Journal() {
   const serial = useRef(Promise.resolve());
   const sequence = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
-  const openDictation = () => setDictationDay(selected);
+  const dictationInserted = useRef(false);
+  const openDictation = () => { dictationInserted.current = false; setDictationDay(selected); };
   async function load() {
     setError("");
     try {
@@ -361,10 +363,17 @@ export default function Journal() {
         <DictationDialog
           date={dictationDay}
           close={() => setDictationDay(null)}
-          append={(text) => {
+          append={async (text) => {
             const current =
               entriesRef.current[dictationDay] || newEntry(dictationDay);
-            update(appendText(current, text), dictationDay);
+            if (!dictationInserted.current) {
+              update(appendText(current, text), dictationDay);
+              dictationInserted.current = true;
+            } else {
+              const retry = pending.current.get(dictationDay);
+              if (retry) persist(retry);
+            }
+            await flush();
           }}
         />
       )}
@@ -450,6 +459,29 @@ export default function Journal() {
               "Saved account copy on this device — sign in through Settings to sync."}
           </p>
         )}
+        {!!engine?.reviews.some((r) => !r.choice) && (
+          <nav
+            className="sync-review-days"
+            aria-label="Entries with overlapping edits"
+          >
+            <span>Review changes in:</span>
+            {[
+              ...new Set(
+                engine.reviews.filter((r) => !r.choice).map((r) => r.date),
+              ),
+            ].map((date) => (
+              <button
+                key={date}
+                aria-current={
+                  view === "write" && selected === date ? "page" : undefined
+                }
+                onClick={() => openDay(date)}
+              >
+                {format(date, { day: "numeric", month: "short" })}
+              </button>
+            ))}
+          </nav>
+        )}
         {error && (
           <div className="journal-error" role="alert">
             {error}
@@ -479,7 +511,13 @@ export default function Journal() {
           <article className="full-entry" style={pageStyle(entry.appearance)}>
             <button
               className="page-sync"
-              onClick={() => navigate("settings")}
+              onClick={() =>
+                engine?.reviews.some((r) => r.date === selected && !r.choice)
+                  ? document
+                      .getElementById("entry-sync-review")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  : navigate("settings")
+              }
               title={
                 error ||
                 (status === "Saving…"
@@ -511,6 +549,14 @@ export default function Journal() {
                 <Check size={16} />
               )}
             </button>
+            {engine && (
+              <SyncReview
+                engine={engine}
+                date={selected}
+                flush={flush}
+                reload={load}
+              />
+            )}
             {reading ? (
               <BookView
                 key={selected}

@@ -1,6 +1,6 @@
-import { timingSafeEqual } from "node:crypto";
-import { sameOrigin } from "../server/origin";
-export const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
+import { authorizeAi, type AiEnvironment } from "../ai/access";
+import { MAX_AUDIO_BYTES } from "./limits";
+export { MAX_AUDIO_BYTES } from "./limits";
 const media = new Set([
   "audio/webm",
   "audio/mp4",
@@ -13,25 +13,12 @@ const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 export async function transcribeRequest(
   request: Request,
-  env: { apiKey?: string; accessCode?: string },
+  env: AiEnvironment,
   fetcher: typeof fetch = fetch,
+  authFetcher: typeof fetch = fetch,
 ): Promise<Response> {
-  if (!env.apiKey || !env.accessCode || env.accessCode.length < 24)
-    return json(
-      {
-        error:
-          "Dictation is not configured yet. Add OPENAI_API_KEY and a private WAFFLE_DICTATION_TOKEN in Vercel, then redeploy.",
-      },
-      503,
-    );
-  const code =
-    request.headers.get("authorization")?.replace(/^Bearer /, "") || "";
-  const expected = Buffer.from(env.accessCode),
-    actual = Buffer.from(code);
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
-    return json({ error: "That dictation access code isn’t correct." }, 401);
-  if (!sameOrigin(request))
-    return json({ error: "This recording must be sent from Waffle." }, 403);
+  const denied = await authorizeAi(request, env, authFetcher);
+  if (denied) return denied;
   if (!request.headers.get("content-type")?.startsWith("multipart/form-data"))
     return json({ error: "Choose an audio recording." }, 415);
   const maxBody = MAX_AUDIO_BYTES + 64 * 1024;

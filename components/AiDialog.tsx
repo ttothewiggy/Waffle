@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import AiAccess, { useAiAccess } from "./AiAccess";
+import { aiHeaders } from "@/lib/ai/session";
 import { X } from "lucide-react";
 export default function AiDialog({
   text,
@@ -10,10 +12,10 @@ export default function AiDialog({
   close: () => void;
   apply: (text: string) => Promise<void>;
 }) {
+  const access = useAiAccess();
   const dialog = useRef<HTMLDialogElement>(null),
     request = useRef<AbortController | null>(null);
   const [mode, setMode] = useState("tidy"),
-    [code, setCode] = useState(""),
     [draft, setDraft] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -32,17 +34,18 @@ export default function AiDialog({
     close();
   }
   async function generate() {
+    if (!access.allowed) return;
     setBusy(true);
     setError("");
     const controller = new AbortController();
     request.current = controller;
-    const timer = setTimeout(() => controller.abort(), 55000);
+    const timer = setTimeout(() => controller.abort(), 65000);
     try {
       const response = await fetch("/api/rewrite", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${code}`,
+          ...(await aiHeaders()),
         },
         body: JSON.stringify({ text, mode }),
         signal: controller.signal,
@@ -104,20 +107,11 @@ export default function AiDialog({
               </option>
             </select>
           </label>
-          <label className="ai-field">
-            Private access code (same as dictation)
-            <input
-              type="password"
-              autoComplete="off"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              disabled={busy}
-            />
-          </label>
+          <AiAccess access={access} close={close} />
           <p>{text.length.toLocaleString()} / 20,000 characters</p>
           <button
             className="primary"
-            disabled={busy || !code || text.length > 20000}
+            disabled={busy || !access.allowed || text.length > 20000}
             onClick={() => void generate()}
           >
             {busy ? "Polishing your words…" : "Create a draft"}

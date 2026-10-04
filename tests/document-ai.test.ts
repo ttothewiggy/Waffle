@@ -4,13 +4,13 @@ import { newEntry, DocumentBlock } from "../lib/storage/types";
 import { blocksFor, textFor, applyDraft } from "../lib/document/blocks";
 import { paginate } from "../lib/document/paginate";
 import { encodeBackup, decodeBackup } from "../lib/backup/format";
-import { rewriteRequest } from "../lib/ai/server";
+import { rewriteRequest as rawRewrite } from "../lib/ai/server";
 import { sameOrigin } from "../lib/server/origin";
-import { transcribeRequest } from "../lib/transcription/server";
-const env = {
-  apiKey: "fake-provider-secret",
-  accessCode: "private-test-code-over-24-characters",
-};
+import { transcribeRequest as rawTranscribe } from "../lib/transcription/server";
+import { aiEnv, authFetch, sessionToken } from "./ai-fixture";
+const env = { ...aiEnv, apiKey: "fake-provider-secret" };
+const rewriteRequest = (...args: Parameters<typeof rawRewrite>) => rawRewrite(args[0], args[1], args[2], authFetch);
+const transcribeRequest = (...args: Parameters<typeof rawTranscribe>) => rawTranscribe(args[0], args[1], args[2], authFetch);
 const response = () =>
   Response.json({
     status: "completed",
@@ -33,7 +33,7 @@ function request(
       host: "localhost:3001",
       origin: "http://localhost:3001",
       "content-type": "application/json",
-      authorization: `Bearer ${env.accessCode}`,
+      authorization: `Bearer ${sessionToken}`,
       ...headers,
     },
     body: JSON.stringify({ text, mode }),
@@ -72,7 +72,7 @@ test("local dictation reaches provider with localhost Host despite bind URL", as
     headers: {
       host: "localhost:3001",
       origin: "http://localhost:3001",
-      authorization: `Bearer ${env.accessCode}`,
+      authorization: `Bearer ${sessionToken}`,
     },
     body: form,
   });

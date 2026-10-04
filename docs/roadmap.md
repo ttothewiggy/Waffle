@@ -53,7 +53,7 @@ Browser verification completed on a separate production-preview origin: imported
 
 Implemented in this pass:
 - Local dictation accepts the browser-facing Host when Next binds to 0.0.0.0. Unrelated origins remain rejected; forwarded-host is not an allowlist. The private token is still required.
-- Optional Light tidy / Improve flow / Rewrite via a server-only Responses API route, using the existing OPENAI_API_KEY and WAFFLE_DICTATION_TOKEN. No additional environment variables. Review and edit a draft before applying. All prior pre-AI text/layout versions stay in the journal, and are included in backups.
+- Optional Light tidy / Improve flow / Rewrite via a server-only Responses API route, using OPENAI_API_KEY with verified, confirmed, non-anonymous account sessions. Review and edit a draft before applying. All prior pre-AI text/layout versions stay in the journal, and are included in backups.
 - Editable text/photo blocks. Photo at cursor splits a paragraph around inserted photos; arrows move text or pictures through the document. Existing entries acquire blocks only when edited; their original text/photos remain readable.
 - A wider writing surface, plus Book reading mode: measured pagination at the current font size, one page on narrow screens and two when the available reading area reaches 760px. Long text is split without losing characters. This is a responsive reading preview, not a final print/PDF layout. Writing still uses a scrolling editor; live editing across page breaks and photo text-wrap remain future work.
 - Overlapping bordered waffle vector mark, favicon and install icons.

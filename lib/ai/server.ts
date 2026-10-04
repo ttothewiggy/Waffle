@@ -1,5 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
-import { sameOrigin } from "../server/origin";
+import { authorizeAi, type AiEnvironment } from "./access";
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 export const MAX_TEXT = 20000;
@@ -11,25 +10,12 @@ const modes = {
 };
 export async function rewriteRequest(
   request: Request,
-  env: { apiKey?: string; accessCode?: string },
+  env: AiEnvironment,
   fetcher: typeof fetch = fetch,
+  authFetcher: typeof fetch = fetch,
 ) {
-  if (!env.apiKey || !env.accessCode || env.accessCode.length < 24)
-    return json(
-      {
-        error:
-          "AI is not configured. Add OPENAI_API_KEY and WAFFLE_DICTATION_TOKEN to this server and restart or redeploy.",
-      },
-      503,
-    );
-  const actual = Buffer.from(
-    request.headers.get("authorization")?.replace(/^Bearer /, "") || "",
-  );
-  const expected = Buffer.from(env.accessCode);
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
-    return json({ error: "That private access code isn’t correct." }, 401);
-  if (!sameOrigin(request))
-    return json({ error: "Open this request from Waffle." }, 403);
+  const denied = await authorizeAi(request, env, authFetcher);
+  if (denied) return denied;
   if (!request.headers.get("content-type")?.startsWith("application/json"))
     return json({ error: "Expected journal text." }, 415);
   let body;

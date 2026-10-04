@@ -22,7 +22,6 @@ import {
   parseOfflineAccount,
   type OfflineAccount,
 } from "@/lib/cloud/offline-account";
-import { encodeBackup } from "@/lib/backup/format";
 const Context = createContext<{
   repository: JournalRepository;
   revision: number;
@@ -181,17 +180,6 @@ export default function CloudAccount({ children }: { children: ReactNode }) {
     </Context.Provider>
   );
 }
-async function download(
-  entries: Parameters<typeof encodeBackup>[0],
-  name: string,
-) {
-  const url = URL.createObjectURL(await encodeBackup(entries));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-}
 export function AccountSettings({
   flush,
   reload,
@@ -215,7 +203,6 @@ export function AccountSettings({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [reviewed, setReviewed] = useState(false);
   const lock = useRef(false);
   async function action(work: () => Promise<void>) {
     if (lock.current) return;
@@ -363,68 +350,23 @@ export function AccountSettings({
             existing account days; use Export & backup to review or import any
             skipped days.
           </p>
-          {engine?.status === "conflict" && (
+          {engine?.reviews.some((r) => !r.choice) && (
             <div className="sync-conflict">
-              <h3>Two versions need your attention</h3>
+              <h3>A few overlapping edits need a choice</h3>
               <p>
-                Download both copies before choosing. To keep parts of each,
-                edit this device’s copy first. Whichever version you choose,
-                displaced entries are preserved in Recently deleted.
+                Only passages changed on both devices need reviewing. Open a day
+                to compare them alongside your writing. No backup downloads or
+                whole-journal replacement needed.
               </p>
-              <button
-                disabled={busy}
-                onClick={() =>
-                  void action(async () => {
-                    await download(
-                      await repository.list(),
-                      "waffle-this-device.json",
-                    );
-                    const cloud = await engine.cloudCopy();
-                    await download(cloud.entries, "waffle-cloud-copy.json");
-                    setReviewed(true);
-                    setMessage(
-                      "Both downloads requested. Check that both files were saved before choosing a version.",
-                    );
-                  })
-                }
-              >
-                Download both versions
-              </button>
-              <button
-                disabled={busy || !reviewed}
-                onClick={() =>
-                  void action(async () => {
-                    if (
-                      window.confirm(
-                        "Use the cloud version? This device’s displaced entries will be kept in Recently deleted.",
-                      )
-                    ) {
-                      await engine.useCloud();
-                      await reload();
-                      setReviewed(false);
-                    }
-                  })
-                }
-              >
-                Use cloud version
-              </button>
-              <button
-                disabled={busy || !reviewed}
-                onClick={() =>
-                  void action(async () => {
-                    if (
-                      window.confirm(
-                        "Use this device’s version? The reviewed cloud entries will also be kept in Recently deleted.",
-                      )
-                    ) {
-                      await engine.useLocal();
-                      setReviewed(false);
-                    }
-                  })
-                }
-              >
-                Use this device’s version
-              </button>
+              {[
+                ...new Set(
+                  engine.reviews.filter((r) => !r.choice).map((r) => r.date),
+                ),
+              ].map((date) => (
+                <a key={date} href={`#entry=${date}`}>
+                  Review {new Date(`${date}T12:00:00`).toLocaleDateString()}
+                </a>
+              ))}
             </div>
           )}
           <p>

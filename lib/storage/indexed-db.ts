@@ -1,3 +1,4 @@
+import type { MergeChoice } from "../cloud/merge";
 import { Entry, DeletedEntry, JournalRepository, hasContent } from "./types";
 export class IndexedDBRepository implements JournalRepository {
   // Keep the original database ID so renaming the app preserves existing entries.
@@ -217,11 +218,15 @@ export class IndexedDBRepository implements JournalRepository {
       const entries = tx.objectStore("entries").getAll();
       const trash = tx.objectStore("trash").getAll();
       const state = tx.objectStore("sync").get("state");
+      const base = tx.objectStore("sync").get("base");
+      const choices = tx.objectStore("sync").get("choices");
       tx.oncomplete = () => {
         db.close();
         resolve({
           entries: entries.result,
           trash: trash.result,
+          base: base.result,
+          choices: choices.result || {},
           state: state.result || { generation: 0, synced: 0, revision: 0 },
         });
       };
@@ -237,6 +242,7 @@ export class IndexedDBRepository implements JournalRepository {
     revision: number,
     generation: number,
     archive = false,
+    mergedBase?: JournalSnapshot,
   ): Promise<boolean> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
@@ -279,12 +285,20 @@ export class IndexedDBRepository implements JournalRepository {
         sync.put(
           {
             ...state,
-            generation: archive ? generation + 1 : generation,
+            generation: archive || mergedBase ? generation + 1 : generation,
             revision,
             synced: generation,
           },
           "state",
         );
+        if (snapshot) {
+          const baseline = mergedBase || snapshot;
+          sync.put(
+            { entries: baseline.entries, trash: baseline.trash },
+            "base",
+          );
+          sync.delete("choices");
+        }
       };
       tx.oncomplete = () => {
         db.close();
@@ -328,7 +342,29 @@ export class IndexedDBRepository implements JournalRepository {
       };
     });
   }
-  async acknowledge(revision: number, sentGeneration: number) {
+  async recordChoice(id: string, choice: MergeChoice) {
+    const db = await this.open();
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction("sync", "readwrite");
+      const store = tx.objectStore("sync"),
+        req = store.get("choices");
+      req.onsuccess = () =>
+        store.put({ ...(req.result || {}), [id]: choice }, "choices");
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onabort = tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+  }
+  async acknowledge(
+    revision: number,
+    sentGeneration: number,
+    sent?: JournalSnapshot,
+  ) {
     const db = await this.open();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction("sync", "readwrite");
@@ -337,6 +373,10 @@ export class IndexedDBRepository implements JournalRepository {
       req.onsuccess = () => {
         const state = req.result || { generation: 0, synced: 0, revision: 0 };
         store.put({ ...state, revision, synced: sentGeneration }, "state");
+        if (sent) {
+          store.put({ entries: sent.entries, trash: sent.trash }, "base");
+          store.delete("choices");
+        }
       };
       tx.oncomplete = () => {
         db.close();
@@ -360,5 +400,7 @@ export interface JournalSnapshot {
 }
 export interface LocalSnapshot extends JournalSnapshot {
   state: SyncState;
+  base?: JournalSnapshot;
+  choices?: Record<string, MergeChoice>;
 }
 export const journalRepository: JournalRepository = new IndexedDBRepository();
