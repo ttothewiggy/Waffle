@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Signup notifications — 2026-10-07
+
+- Added a private signup notification endpoint using Resend, with a fixed owner inbox, minimal plain-text account details and authenticated requests.
+- Added a separate Supabase background queue with bounded retries and provider deduplication; notification failures do not block registration. No existing accounts are backfilled.
+- Added deployment, Vault, SQL activation and delivery troubleshooting instructions.
+- Validation: 93 automated tests, TypeScript, changed-file lint and production/offline build passed. Live Supabase scheduling and inbox delivery still require the deployment check.
+
+
 ### AI for registered accounts — 2026-10-04
 
 - Enabled dictation and AI polishing for every confirmed, non-anonymous account, including future signups. Removed the owner-maintained account approval list.

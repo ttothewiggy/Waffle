@@ -12,11 +12,9 @@ Both paid routes verify the session with Supabase's `/auth/v1/user` on every req
 
 This is authentication, not an invitation gate or usage quota. Anyone who creates and confirms an account can consume API credit. Provider keys remain server-only. Signup notifications are not a spending limit.
 
-## Signup notifications — pending setup
+## Signup notifications
 
-Notifications are separate from this access change. No email is sent by this patch. The owner needs to choose a recipient and configure a sending service. The personal recipient does not need to become an admin account and must not be placed in public browser configuration.
-
-Use a minimal signup event (user ID, email, signup time) with background delivery after account creation. Avoid forwarding the full `auth.users` row, which contains sensitive authentication fields. Delivery failure must not roll back signup. Authenticate the delivery endpoint, deduplicate by user ID and provide retries independently of signup. Do not use a blocking before-user-created hook or client-only signup callback for these notifications.
+Background signup notifications are implemented separately from account access. See [activation and troubleshooting](signup-notifications.md). They need deployment and Supabase setup; adding environment variables alone does not enable delivery.
 
 ## Recording behaviour
 

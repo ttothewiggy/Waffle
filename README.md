@@ -51,3 +51,7 @@ The final visual pass restores a walnut shell, responsive parchment frame and co
 ## Account sync
 
 See [Supabase setup and private-test checklist](docs/cloud-sync.md). Run the checked-in SQL migration, configure authentication URLs/email delivery and add the public environment variables before deploying. Account journals have separate device caches; copying an old journal into an account is explicit. Conflict resolution preserves both versions until the user chooses. Milestone 4 privacy hardening is not complete; the setup guide lists remaining work.
+
+## Signup notifications
+
+Optional owner alerts via Resend are available. Follow [signup notification setup](docs/signup-notifications.md) to deploy and activate the Supabase background job.
